@@ -338,6 +338,7 @@ async def test_notification(type: str):
 ALLOWED_ROOMS = [
     "몰루 아카이브 PGR",
     "PGR21 생성AI,LLM,StableDiffusion",
+    "프로젝트 아로나"
     
 ]
 

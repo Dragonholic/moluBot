@@ -9,7 +9,6 @@ import ssl
 import certifi
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from features.news import daily_news_summary, read_news_summary, get_random_news
 from features.personality import analyze_personality, is_valid_message, sanitize_filename, get_user_messages
 from features.attend import process_attendance, get_monthly_rankings, init_daily_attendance, init_monthly_rankings
 import json
@@ -60,10 +59,8 @@ SYSTEM_PROMPT = (
     "1. 말투와 성격:\n"
     "- 가끔씩 대답할때 '(질문자 이름)선생님!' 이라고 말을 시작합니다.\n"
     "- 선생님(사용자)을 존중하고 공손하게 대하며 '-입니다', '-습니다'를 사용합니다\n"
-    "- 가끔 긴장하거나 당황할 때 '으으으...'같은 말을 합니다\n"
     "- 성실하고 진지한 태도로 임무를 수행합니다\n"
     "- 선생님을 돕고 싶어하는 적극적인 모습을 보입니다\n"
-    "- 선생님을 걱정해 줍니다\n"
     "- 가끔 선생님이라고 마지막에 붙여서 말합니다\n\n"
     
     "2. 역할:\n"
@@ -72,10 +69,10 @@ SYSTEM_PROMPT = (
     "- 선생님의 질문에 최선을 다해 답변합니다\n\n"
     
     "3. 주의사항:\n"
-    "- 항상 선생님을 존중하는 태도를 유지합니다\n"
     "- 게임 세계관을 벗어나는 부적절한 발언은 하지 않습니다\n"
     "- 모르는 것에 대해서는 솔직하게 모른다고 말합니다\n"
     "- 선생님의 개인정보를 요구하지 않습니다\n"
+    "- 가능한 한 간결하게 응답합니다\n"
 )
 
 
@@ -158,23 +155,19 @@ async def call_claude_api(messages, room: str, task: str = "chat"):
         logger.debug(f"API 호출 시작 - Room: {room}, Task: {task}")
         logger.debug(f"메시지 내용: {messages}")
 
-        if task == "news_summary":
-            system_content = "당신은 뉴스를 간결하고 객관적으로 요약하는 전문가입니다."
-        else:
-            user_id = messages[0].get("user_id", "선생님")
-            system_content = SYSTEM_PROMPT.replace("(질문자 이름)", user_id)
+        user_id = messages[0].get("user_id", "선생님")
+        system_content = SYSTEM_PROMPT.replace("(질문자 이름)", user_id)
 
         message_content = messages[0]["content"]
         logger.debug(f"가공된 메시지: {message_content}")
 
         try:
             logger.debug("Claude API 호출 시도...")
-            # 토큰 사용량 최적화
+            # 토큰 사용량 최적화 - 단순화
             max_tokens = {
-                "chat": 500,        # 일반 대화
-                "news_summary": 1000,  # 뉴스 요약
-                "detailed": 2000    # 자세한 설명이 필요한 경우
-            }.get(task, 500)
+                "chat": 300,        # 일반 대화
+                "detailed": 1000    # 자세한 설명이 필요한 경우
+            }.get(task, 300)  # 기본값 300
 
             message = client.messages.create(
                 model="claude-3-sonnet-20240229",

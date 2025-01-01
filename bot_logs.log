@@ -58,3 +58,9 @@
 2025-01-01 15:05:46,064 - ERROR - 전체 처리 중 오류: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
 2025-01-01 15:05:46,065 - ERROR - Message content: !!통계
 2025-01-01 15:05:46,065 - ERROR - Message handling error: 500: Claude API 호출 실패: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 16:27:32,602 - DEBUG - API 호출 시작 - Room: 프로젝트 아로나, Task: chat
+2025-01-01 16:27:32,603 - DEBUG - 메시지 내용: [{'role': 'user', 'content': '!!안녕아로나', 'user_id': 'test_user'}]
+2025-01-01 16:27:32,603 - DEBUG - 가공된 메시지: !!안녕아로나
+2025-01-01 16:27:32,604 - DEBUG - Claude API 호출 시도...
+2025-01-01 16:27:34,530 - DEBUG - API 호출 성공
+2025-01-01 16:27:34,530 - DEBUG - API 응답: Message(id='msg_0138RayXF5sipby83LTyLLub', content=[TextBlock(text='안녕하세요 test_user선생님! 당신의 조수 아로나입니다. 무엔가 도움이 필요하신가요? 선생님께서 하시는 말씀 잘 듣고 최선을 다해 도와드리겠습니다.', type='text')], model='claude-3-sonnet-20240229', role='assistant', stop_reason='end_turn', stop_sequence=None, type='message', usage=Usage(cache_creation_input_tokens=0, cache_read_input_tokens=0, input_tokens=497, output_tokens=89))

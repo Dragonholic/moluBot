@@ -4,8 +4,6 @@
 from fastapi import FastAPI, HTTPException 
 from pydantic import BaseModel
 import os
-import aiohttp
-import ssl
 import certifi
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -16,8 +14,6 @@ import aiofiles
 from datetime import datetime, timezone, timedelta
 from collections import deque
 import re
-import random
-import urllib.parse
 import logging
 from logging.handlers import RotatingFileHandler
 from typing import List, Dict
@@ -31,11 +27,43 @@ import sys
 from dotenv import load_dotenv
 from features.token_monitor import log_token_usage, get_monthly_usage, predict_monthly_usage
 from features.shortcuts import add_shortcut, get_shortcut, list_shortcuts
+from contextlib import asynccontextmanager
 
 load_dotenv()
 
+# 로깅 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 시작할 때 실행
+    logger.info("🤖 아로나 봇 시작...")
+    try:
+        await init_default_admin()
+        logger.info("✅ 기본 관리자 설정 완료")
+        setup_notifications()
+        logger.info("✅ 알림 설정 완료")
+        scheduler.start()
+        logger.info("✅ 스케줄러 시작 완료")
+        logger.info("🎉 아로나 봇이 성공적으로 시작되었습니다!")
+    except Exception as e:
+        logger.error(f"❌ 시작 중 오류 발생: {str(e)}")
+        raise e
+    
+    yield
+    
+    # 종료할 때 실행
+    logger.info("🔄 아로나 봇 종료 중...")
+    scheduler.shutdown()
+    logger.info("👋 아로나 봇이 종료되었습니다.")
+
 # FastAPI 앱 초기화
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # 데이터 모델 정의
 class QuestionModel(BaseModel):
@@ -288,20 +316,7 @@ def setup_notifications():
         )
     )
 
-# FastAPI 시작 이벤트에 스케줄러 시작 추가
-@app.on_event("startup")
-async def startup_event():
-    await init_default_admin()  # 기본 관리자 추가
-    setup_notifications()
-    scheduler.start()
-
-# FastAPI 종료 이벤트에 스케줄러 종료 추가
-@app.on_event("shutdown")
-async def shutdown_event():
-    scheduler.shutdown()
-
-
-#테스트 알림 코드 
+# 테스트 알림 코드 
 @app.post("/test_notification/{type}")
 async def test_notification(type: str):
     if type == "stroking":

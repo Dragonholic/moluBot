@@ -16,16 +16,23 @@ function sendRequest(endpoint, data = null, method = "get") {
             .timeout(TIMEOUT);
 
         var response;
-        if (method === "post") {
-            response = connection.requestBody(JSON.stringify(data)).post();
-        } else {
-            response = connection.get();
+        try {
+            if (method === "post") {
+                response = connection.requestBody(JSON.stringify(data)).post();
+            } else {
+                response = connection.get();
+            }
+        } catch (e) {
+            if (e.toString().includes("timeout")) {
+                return { "response": "서버가 응답하지 않습니다. 잠시 후 다시 시도해주세요." };
+            }
+            throw e;
         }
         
         return JSON.parse(response.body().text());
     } catch (e) {
         Log.e("Error in sendRequest: " + e);
-        throw e;
+        return { "response": "서버가 응답하지 않습니다. 잠시 후 다시 시도해주세요." };
     }
 }
 

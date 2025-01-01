@@ -1,8 +1,22 @@
+import logging
+
+# 로거 설정
+logger = logging.getLogger("NotificationLogger")
+logger.setLevel(logging.DEBUG)
+
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List
 
 # 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
+
+# 알림을 받을 방 목록 설정
+NOTIFICATION_ROOMS = {
+    "stroking": ["몰루 아카이브 PGR"],
+    "galaxy": ["몰루 아카이브 PGR"],
+    "birthday": ["몰루 아카이브 PGR"],
+    "shop": ["몰루 아카이브 PGR"]
+}
 
 # 캐릭터 생일 데이터 (월, 일, 이름)
 CHARACTER_BIRTHDAYS = [
@@ -181,3 +195,27 @@ async def check_character_birthday(rooms: List[str]):
         message = f"선생님 오늘은 {characters} 의 생일이에요 축하해주세요"
         for room in rooms:
             await send_notification(message, room) 
+
+async def check_shop_reset():
+    """매월 마지막 날 상점 초기화 알림"""
+    try:
+        current_time = datetime.now(KST)
+        # 다음 날이 다음 달의 1일인지 확인
+        next_day = current_time + timedelta(days=1)
+        
+        if next_day.day == 1:  # 오늘이 이번 달의 마지막 날
+            message = (
+                "📢 선생님! 오늘은 이번 달의 마지막 날입니다!\n\n"
+                "🏪 상점 초기화 전 확인하실 것:\n"
+                "- 총력전/대결전 상점\n"
+                "- 종합전술시험 상점\n"
+                "- 숙련증서 상점\n"
+                "상점 초기화 전에 모든 재화를 사용하는 것을 잊지 마세요!"
+            )
+            
+            # 알림 전송
+            for room in NOTIFICATION_ROOMS["shop"]:
+                await send_notification(room, message)
+                
+    except Exception as e:
+        logger.error(f"상점 초기화 알림 오류: {str(e)}") 

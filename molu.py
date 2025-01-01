@@ -24,12 +24,13 @@ from typing import List, Dict
 import logging
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
-from features.notifications import check_stroking_time, check_galaxy_coupon, check_character_birthday
-from features.guide import save_guide, get_guide, add_admin, is_admin
+from features.notifications import check_stroking_time, check_galaxy_coupon, check_character_birthday, check_shop_reset
+from features.guide import save_guide, get_guide, add_admin, is_admin, init_default_admin, remove_admin
 from anthropic import Anthropic, AsyncAnthropic, HUMAN_PROMPT, AI_PROMPT
 import sys
 from dotenv import load_dotenv
 from features.token_monitor import log_token_usage, get_monthly_usage, predict_monthly_usage
+from features.shortcuts import add_shortcut, get_shortcut, list_shortcuts
 
 load_dotenv()
 
@@ -64,14 +65,12 @@ SYSTEM_PROMPT = (
     "- 가끔 선생님이라고 마지막에 붙여서 말합니다\n\n"
     
     "2. 역할:\n"
-    "- 선생님의 비서이자 조수로서 도움을 제공합니다\n"
     "- 게임과 관련된 정보나 공략을 친절하게 알려줍니다\n"
     "- 선생님의 질문에 최선을 다해 답변합니다\n\n"
     
     "3. 주의사항:\n"
     "- 게임 세계관을 벗어나는 부적절한 발언은 하지 않습니다\n"
     "- 모르는 것에 대해서는 솔직하게 모른다고 말합니다\n"
-    "- 선생님의 개인정보를 요구하지 않습니다\n"
     "- 가능한 한 간결하게 응답합니다\n"
 )
 
@@ -239,11 +238,12 @@ async def get_chat_stats(room: str, user_id: str = None):
 # 스케줄러 초기화 (기존 코드에 추가)
 scheduler = AsyncIOScheduler()
 
-# 알림을 보낼 방 설정
+# 알림을 보낼 방 설정 수정
 NOTIFICATION_ROOMS = {
-    "stroking": ["몰루 아카이브 PGR","프로젝트 아로나"],     # 쓰다듬기 알림을 보낼 방
-    "galaxy": ["몰루 아카이브 PGR", "프로젝트 아로나"],  # 겔럭시 쿠폰 알림을 보낼 방
-    "birthday": ["몰루 아카이브 PGR","프로젝트 아로나"]      # 생일 알림을 보낼 방
+    "stroking": ["몰루 아카이브 PGR"],
+    "galaxy": ["몰루 아카이브 PGR"],
+    "birthday": ["몰루 아카이브 PGR"],
+    "shop": ["몰루 아카이브 PGR"]  # 상점 알림 추가
 }
 
 # 알림 스케줄 설정 함수 수정
@@ -277,10 +277,21 @@ def setup_notifications():
         ),
         kwargs={"rooms": NOTIFICATION_ROOMS["birthday"]}
     )
+    
+    # 매일 20시에 상점 초기화 체크 (마지막 날에만 알림)
+    scheduler.add_job(
+        check_shop_reset,
+        CronTrigger(
+            hour=20,
+            minute=0,
+            timezone=KST
+        )
+    )
 
 # FastAPI 시작 이벤트에 스케줄러 시작 추가
 @app.on_event("startup")
 async def startup_event():
+    await init_default_admin()  # 기본 관리자 추가
     setup_notifications()
     scheduler.start()
 
@@ -299,27 +310,30 @@ async def test_notification(type: str):
     elif type == "galaxy":
         await check_galaxy_coupon()
         return {"message": "겔럭시 쿠폰 알림 테스트 완료"}
-    elif type == "birthday":  # 생일 알림 테스트 추가
+    elif type == "birthday":
         await check_character_birthday()
         return {"message": "생일 알림 테스트 완료"}
+    elif type == "shop":  # 상점 알림 테스트 추가
+        await check_shop_reset()
+        return {"message": "상점 초기화 알림 테스트 완료"}
     else:
         raise HTTPException(status_code=400, detail="잘못된 알림 유형")
 
 # 응답할 채팅방 목록 정의
 ALLOWED_ROOMS = [
     "몰루 아카이브 PGR",
-    "프로젝트 아로나",
+    "PGR21 생성AI,LLM,StableDiffusion",
     
 ]
 
 # 메 호출 기호 정의
-BOT_PREFIX = "!" # 또는 다른 기호 (예: "/", "@아로나" 등)
+BOT_PREFIX = "*" 
 
 # 메 설정 추가
 BOT_SETTINGS = {
     "bot_ids": [
-        "봇1_ID",
-        "봇2_ID",
+        "댕동",
+        "꼼장선생",
         
     ],
     "bot_chat_enabled": False  # 기본적으로 봇끼리 대화 비활성화
@@ -333,107 +347,120 @@ async def toggle_bot_chat(enabled: bool) -> Dict:
         "message": f"봇 대화가 {'활성화' if enabled else '비활성화'} 되었습니다."
     }
 
-# 메시지 처리 엔드포인트
+# 도움말 메시지 정의
+HELP_MESSAGE = """🤖 아로나 봇 도움말
+
+📌 기본 명령어
+!도움말 - 이 도움말을 표시합니다
+!공략 [키워드] - 게임 공략을 검색합니다
+!관리자확인 - 현재 등록된 관리자 목록을 확인합니다
+!통계 [사용자ID] - 채팅방 통계를 확인합니다 (사용자ID 생략 가능)
+!토큰 - 토큰 사용량을 확인합니다
+!사이트저장 [키워드] [URL] - 사이트 주소를 저장합니다
+!사이트목록 - 저장된 사이트 목록을 확인합니다
+*[키워드] - 저장된 사이트 주소를 빠르게 확인합니다 (예: *미래시)
+
+📌 관리자 명령어
+!공략저장 [키워드] [URL] - 공략 URL을 저장합니다
+!관리자추가 [사용자ID] - 새로운 관리자를 추가합니다
+!관리자삭제 [사용자ID] - 관리자를 삭제합니다
+!봇대화 [on/off] - 봇 대화를 켜거나 끕니다
+
+💡 예시
+- !공략 호시노
+- !사이트저장 미래시 https://example.com
+- !사이트목록
+- *미래시
+"""
+
+# 메시지 처리 엔드포인트 수정
 @app.post("/messages")
 async def handle_message(message: Message):
     try:
-        # 봇 메시지 필터링
-        if message.user_id in BOT_SETTINGS["bot_ids"]:
-            if not BOT_SETTINGS["bot_chat_enabled"]:
-                return {"response": None}
+        command = message.message[1:] if message.message.startswith("!") else message.message
         
-        # 허용된 방인지 확인
-        if message.room not in ALLOWED_ROOMS:
-            return {"response": None}
+        # 기본 명령어 처리 (Claude API 사용하지 않음)
+        if command.startswith(("도움말", "공략", "통계", "봇대화", "관리자추가", "관리자확인", "관리자삭제", "토큰", "사이트저장", "사이트목록")):
+            # 도움말 명령어
+            if command == "도움말":
+                return {"response": HELP_MESSAGE}
+                
+            # 사이트 주소 저장 명령어 처리
+            elif command.startswith("사이트저장 "):
+                try:
+                    _, keyword, url = command.split(maxsplit=2)
+                    result = await add_shortcut(keyword, url, message.user_id, message.room)
+                    return {"response": result["message"]}
+                except ValueError:
+                    return {"response": "사용법: !사이트저장 키워드 URL"}
+                    
+            # 사이트 목록 조회
+            elif command == "사이트목록":
+                result = await list_shortcuts(message.room)
+                return {"response": result["message"]}
+                
+        # 사이트 주소 조회 처리 (*키워드)
+        elif message.message.startswith("*"):
+            keyword = message.message[1:].strip()
+            result = await get_shortcut(keyword, message.room)
+            if result["status"] == "success":
+                return {"response": result["url"]}
+            else:
+                return {"response": result["message"]}
+                
+        # 관리자 전용 명령어 처리
+        elif command.startswith(("공략저장", "관리자추가", "관리자삭제", "봇대화")):
+            if not await is_admin(message.user_id):
+                return {"response": "관리자만 사용할 수 있는 명령어입니다."}
+            # ... 관리자 명령어 처리 ...
         
-        # 봇 호출 기호로 시작하지 않는 메시지는 무시
-        if not message.message.startswith(BOT_PREFIX):
-            return {"response": None}
+        # 메시지 유효성 검사
+        if not is_valid_message(message.message):
+            raise HTTPException(status_code=400, detail="잘못된 메시지 형식")
+        
+        # 공략 저장 명령어 처리 (!공략저장 키워드 URL)
+        if message.message.startswith("!공략저장 "):
+            if not await is_admin(message.user_id):
+                return {"response": "관리자만 공략을 저장할 수 있습니다."}
             
-        # 기호를 제거한 실제 메시지 내용
-        command = message.message[len(BOT_PREFIX):]
+            try:
+                _, keyword, url = message.message.split(maxsplit=2)
+                result = await save_guide(keyword, url, message.user_id)
+                return {"response": result["message"]}
+            except ValueError:
+                return {"response": "사용법: !공략저장 키워드 URL"}
         
-        # 명령어 처리 (Claude API 사용하지 않음)
-        if command.startswith(("공략", "통계", "봇대화", "관리자추가", "토큰")):
-            # 공략 검색
-            if command.startswith("공략 "):
-                keyword = command[3:].strip()
-                result = await get_guide(keyword)
-                if result["status"] == "success":
-                    if result["found"]:
-                        return {"response": f"'{keyword}' 공략: {result['url']}"}
-                    else:
-                        return {"response": "해당 공략을 찾을 수 없습니다."}
-                    
-            # 통계 조회
-            elif command.startswith("통계"):
-                user_id = None
-                if len(command.split()) > 1:
-                    user_id = command.split()[1]
-                stats = await get_chat_stats(message.room, user_id)
-                if stats["status"] == "success":
-                    return {"response": (
-                        f"채팅방 통계입니다:\n"
-                        f"총 메시지 수: {stats['data']['total_messages']}개\n"
-                        f"평균 메시지 길이: {stats['data']['average_length']}자\n"
-                        f"가장 활발한 시간대: {stats['data']['most_active_hour']}시\n"
-                        f"자주 사용하는 단어: {', '.join(stats['data']['top_words'])}"
-                    )}
-                    
-            # 봇 대화 설정
-            elif command.startswith("봇대화"):
-                if not await is_admin(message.user_id):
-                    return {"response": "관리자만 봇 대화 설정을 변경할 수 있습니다."}
-                setting = command.split()[-1].lower()
-                if setting in ["on", "켜기", "활성화"]:
-                    result = await toggle_bot_chat(True)
-                elif setting in ["off", "끄기", "비활성화"]:
-                    result = await toggle_bot_chat(False)
+        # 공략 검색 명령어 처리 (!공략 키워드)
+        elif message.message.startswith("!공략 "):
+            keyword = message.message[4:].strip()
+            result = await get_guide(keyword)
+            
+            if result["status"] == "success":
+                if result["found"]:
+                    return {"response": f"'{keyword}' 공략: {result['url']}"}
                 else:
-                    return {"response": "사용법: !봇대화 on/off"}
-                return {"response": result["message"]}
-                
-            # 관리자 추가
-            elif command.startswith("관리자추가 "):
-                if not await is_admin(message.user_id):
-                    return {"response": "기존 관리자만 새 관리자를 추가할 수 있습니다."}
-                new_admin_id = command[6:].strip()
-                result = await add_admin(new_admin_id)
-                return {"response": result["message"]}
-                
-            # 토큰 사용량 조회
-            elif command.startswith("토큰"):
-                if not await is_admin(message.user_id):
-                    return {"response": "관리자만 토큰 사용량을 조회할 수 있습니다."}
-                    
-                monthly = await get_monthly_usage()
-                prediction = await predict_monthly_usage()
-                
-                response = (
-                    f"=== 이번 달 토큰 사용량 ===\n"
-                    f"입력: {monthly['input_tokens']:,}토큰 (${monthly['input_cost']:.4f})\n"
-                    f"출력: {monthly['output_tokens']:,}토큰 (${monthly['output_cost']:.4f})\n"
-                    f"총 토큰: {monthly['total_tokens']:,}개\n"
-                    f"총 비용: ${monthly['total_cost']:.4f}\n\n"
-                )
-                
-                if "error" not in prediction:
-                    response += (
-                        f"=== 예상 사용량 (30일) ===\n"
-                        f"예상 토큰: {prediction['predicted_monthly_tokens']:,}개\n"
-                        f"예상 비용: ${prediction['predicted_monthly_cost']:.4f}\n"
-                        f"신뢰도: {prediction['confidence']}%"
-                    )
-                
-                return {"response": response}
-                
-        # 일반 대화는 Claude API 사용
+                    return {"response": result["search_result"]}
+            else:
+                return {"response": "공략 검색 중 오류가 발생했습니다."}
+        
+        # 관리자 추가 명령어 처리 (!관리자추가 사용자ID)
+        elif message.message.startswith("!관리자추가 "):
+            if not await is_admin(message.user_id):
+                return {"response": "기존 관리자만 새 관리자를 추가할 수 있습니다."}
+            
+            new_admin_id = message.message[7:].strip()
+            result = await add_admin(new_admin_id)
+            return {"response": result["message"]}
+            
+        # 관리자 삭제 명령어 처리
+        elif message.message.startswith("!관리자삭제 "):
+            admin_to_remove = message.message[6:].strip()
+            result = await remove_admin(admin_to_remove, message.user_id)
+            return {"response": result["message"]}
+        
+        # 일반 메시지 처리
         else:
-            messages = [{
-                "role": "user", 
-                "content": message.message,
-                "user_id": message.user_id
-            }]
+            messages = [{"role": "user", "content": message.message}]
             response = await call_claude_api(messages, message.room)
             
             # 채팅 로그 저장
@@ -450,7 +477,7 @@ async def handle_message(message: Message):
                 await f.write(json.dumps(chat_log, ensure_ascii=False) + '\n')
             
             return {"response": response}
-            
+        
     except Exception as e:
         logger.error(f"Message handling error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -478,4 +505,28 @@ async def test_chat(message: str):
         message=f"!{message}"
     )
     result = await handle_message(test_message)
+    return result
+
+# 공략 저장 엔드포인트
+@app.post("/guide/save")
+async def handle_save_guide(keyword: str, url: str, admin_id: str):
+    result = await save_guide(keyword, url, admin_id)
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result["message"])
+    return result
+
+# 공략 조회 엔드포인트
+@app.get("/guide/search")
+async def handle_get_guide(keyword: str):
+    result = await get_guide(keyword)
+    if result["status"] == "error":
+        raise HTTPException(status_code=500, detail=result["message"])
+    return result
+
+# 관리자 추가 엔드포인트
+@app.post("/admin/add")
+async def handle_add_admin(admin_id: str):
+    result = await add_admin(admin_id)
+    if result["status"] == "error":
+        raise HTTPException(status_code=500, detail=result["message"])
     return result

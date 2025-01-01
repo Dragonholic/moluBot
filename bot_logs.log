@@ -1,0 +1,60 @@
+2025-01-01 14:56:25,534 - INFO - API 키 테스트 시작
+2025-01-01 14:56:25,534 - DEBUG - 테스트 메시지: [{'role': 'user', 'content': '테스트 메시지', 'user_id': 'test_user'}]
+2025-01-01 14:56:25,535 - DEBUG - API 호출 시작 - Room: 프로젝트 아로나, Task: chat
+2025-01-01 14:56:25,536 - DEBUG - 메시지 내용: [{'role': 'user', 'content': '테스트 메시지', 'user_id': 'test_user'}]
+2025-01-01 14:56:25,536 - DEBUG - 가공된 메시지: 테스트 메시지
+2025-01-01 14:56:25,536 - DEBUG - Claude API 호출 시도...
+2025-01-01 14:56:25,862 - ERROR - API 호출 중 오류: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 14:56:25,863 - ERROR - API 요청 데이터: 테스트 메시지
+2025-01-01 14:56:25,863 - ERROR - 전체 처리 중 오류: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 14:56:25,864 - ERROR - Message content: 테스트 메시지
+2025-01-01 14:56:25,864 - ERROR - API 키 테스트 실패: 500: Claude API 호출 실패: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:00:50,180 - INFO - API 키 테스트 시작
+2025-01-01 15:00:50,181 - DEBUG - 테스트 메시지: [{'role': 'user', 'content': '테스트 메시지', 'user_id': 'test_user'}]
+2025-01-01 15:00:50,181 - DEBUG - API 호출 시작 - Room: 프로젝트 아로나, Task: chat
+2025-01-01 15:00:50,181 - DEBUG - 메시지 내용: [{'role': 'user', 'content': '테스트 메시지', 'user_id': 'test_user'}]
+2025-01-01 15:00:50,182 - DEBUG - 가공된 메시지: 테스트 메시지
+2025-01-01 15:00:50,182 - DEBUG - Claude API 호출 시도...
+2025-01-01 15:00:50,519 - ERROR - API 호출 중 오류: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:00:50,520 - ERROR - API 요청 데이터: 테스트 메시지
+2025-01-01 15:00:50,521 - ERROR - 전체 처리 중 오류: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:00:50,521 - ERROR - Message content: 테스트 메시지
+2025-01-01 15:00:50,521 - ERROR - API 키 테스트 실패: 500: Claude API 호출 실패: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:01:09,309 - INFO - API 키 테스트 시작
+2025-01-01 15:01:09,310 - DEBUG - 테스트 메시지: [{'role': 'user', 'content': '테스트 메시지', 'user_id': 'test_user'}]
+2025-01-01 15:01:09,310 - DEBUG - API 호출 시작 - Room: 프로젝트 아로나, Task: chat
+2025-01-01 15:01:09,311 - DEBUG - 메시지 내용: [{'role': 'user', 'content': '테스트 메시지', 'user_id': 'test_user'}]
+2025-01-01 15:01:09,311 - DEBUG - 가공된 메시지: 테스트 메시지
+2025-01-01 15:01:09,311 - DEBUG - Claude API 호출 시도...
+2025-01-01 15:01:09,631 - ERROR - API 호출 중 오류: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:01:09,631 - ERROR - API 요청 데이터: 테스트 메시지
+2025-01-01 15:01:09,632 - ERROR - 전체 처리 중 오류: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:01:09,632 - ERROR - Message content: 테스트 메시지
+2025-01-01 15:01:09,632 - ERROR - API 키 테스트 실패: 500: Claude API 호출 실패: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:02:49,825 - DEBUG - API 호출 시작 - Room: 프로젝트 아로나, Task: chat
+2025-01-01 15:02:49,826 - DEBUG - 메시지 내용: [{'role': 'user', 'content': '!!공략', 'user_id': 'test_user'}]
+2025-01-01 15:02:49,826 - DEBUG - 가공된 메시지: !!공략
+2025-01-01 15:02:49,826 - DEBUG - Claude API 호출 시도...
+2025-01-01 15:02:50,155 - ERROR - API 호출 중 오류: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:02:50,155 - ERROR - API 요청 데이터: !!공략
+2025-01-01 15:02:50,155 - ERROR - 전체 처리 중 오류: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:02:50,156 - ERROR - Message content: !!공략
+2025-01-01 15:02:50,157 - ERROR - Message handling error: 500: Claude API 호출 실패: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:04:06,383 - DEBUG - API 호출 시작 - Room: 프로젝트 아로나, Task: chat
+2025-01-01 15:04:06,383 - DEBUG - 메시지 내용: [{'role': 'user', 'content': '!/test_notification/stroking', 'user_id': 'test_user'}]
+2025-01-01 15:04:06,384 - DEBUG - 가공된 메시지: !/test_notification/stroking
+2025-01-01 15:04:06,384 - DEBUG - Claude API 호출 시도...
+2025-01-01 15:04:06,688 - ERROR - API 호출 중 오류: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:04:06,689 - ERROR - API 요청 데이터: !/test_notification/stroking
+2025-01-01 15:04:06,689 - ERROR - 전체 처리 중 오류: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:04:06,690 - ERROR - Message content: !/test_notification/stroking
+2025-01-01 15:04:06,690 - ERROR - Message handling error: 500: Claude API 호출 실패: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:05:45,755 - DEBUG - API 호출 시작 - Room: 프로젝트 아로나, Task: chat
+2025-01-01 15:05:45,756 - DEBUG - 메시지 내용: [{'role': 'user', 'content': '!!통계', 'user_id': 'test_user'}]
+2025-01-01 15:05:45,756 - DEBUG - 가공된 메시지: !!통계
+2025-01-01 15:05:45,756 - DEBUG - Claude API 호출 시도...
+2025-01-01 15:05:46,063 - ERROR - API 호출 중 오류: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:05:46,064 - ERROR - API 요청 데이터: !!통계
+2025-01-01 15:05:46,064 - ERROR - 전체 처리 중 오류: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}
+2025-01-01 15:05:46,065 - ERROR - Message content: !!통계
+2025-01-01 15:05:46,065 - ERROR - Message handling error: 500: Claude API 호출 실패: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}

@@ -28,10 +28,11 @@ from dotenv import load_dotenv
 from features.token_monitor import log_token_usage, get_monthly_usage, predict_monthly_usage
 from features.shortcuts import add_shortcut, get_shortcut, list_shortcuts
 from contextlib import asynccontextmanager
+import uvicorn
 
 load_dotenv()
 
-# 로깅 설정
+# 로깅 설정을 test.py 스타일로 변경
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -39,31 +40,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # 시작할 때 실행
-    logger.info("🤖 아로나 봇 시작...")
-    try:
-        await init_default_admin()
-        logger.info("✅ 기본 관리자 설정 완료")
-        setup_notifications()
-        logger.info("✅ 알림 설정 완료")
-        scheduler.start()
-        logger.info("✅ 스케줄러 시작 완료")
-        logger.info("🎉 아로나 봇이 성공적으로 시작되었습니다!")
-    except Exception as e:
-        logger.error(f"❌ 시작 중 오류 발생: {str(e)}")
-        raise e
-    
-    yield
-    
-    # 종료할 때 실행
-    logger.info("🔄 아로나 봇 종료 중...")
-    scheduler.shutdown()
-    logger.info("👋 아로나 봇이 종료되었습니다.")
-
-# FastAPI 앱 초기화
-app = FastAPI(lifespan=lifespan)
+# FastAPI 앱 초기화 단순화
+app = FastAPI()
 
 # 데이터 모델 정의
 class QuestionModel(BaseModel):
@@ -586,3 +564,8 @@ async def test_echo(message: Message):
         },
         "response": f"받은 메시지: {message.message}"
     }
+
+# 실행 부분을 test.py 스타일로 단순화
+if __name__ == "__main__":
+    print("\n=== 서버 시작 ===")
+    uvicorn.run(app, host="0.0.0.0", port=20001)

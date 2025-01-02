@@ -1,5 +1,4 @@
 from features.personality import analyze_personality
-from features.attend import process_attendance, get_monthly_rankings
 from features.notifications import check_stroking_time, check_galaxy_coupon, check_character_birthday, check_shop_reset
 from features.guide import save_guide, get_guide, add_admin, is_admin, remove_admin
 from features.token_monitor import log_token_usage, get_monthly_usage, predict_monthly_usage
@@ -7,6 +6,28 @@ from molu import call_claude_api
 import logging
 
 logger = logging.getLogger(__name__)
+
+HELP_MESSAGE = """🤖 아로나 봇 도움말
+📌 기본 명령어
+!도움말 - 이 도움말을 표시합니다
+!공략 [키워드] - 게임 공략을 검색합니다
+!관리자확인 - 현재 등록된 관리자 목록을 확인합니다
+!통계 [사용자ID] - 채팅방 통계를 확인합니다 (사용자ID 생략 가능)
+!토큰 - 토큰 사용량을 확인합니다
+!사이트저장 [키워드] [URL] - 사이트 주소를 저장합니다
+!사이트목록 - 저장된 사이트 목록을 확인합니다
+*[키워드] - 저장된 사이트 주소를 빠르게 확인합니다 (예: *미래시)
+📌 관리자 명령어
+!공략저장 [키워드] [URL] - 공략 URL을 저장합니다
+!관리자추가 [사용자ID] - 새로운 관리자를 추가합니다
+!관리자삭제 [사용자ID] - 관리자를 삭제합니다
+!봇대화 [on/off] - 봇 대화를 켜거나 끕니다
+💡 예시
+- !공략 호시노
+- !사이트저장 미래시 https://example.com
+- !사이트목록
+- *미래시
+"""
 
 async def handle_commands(command: str, message, room: str):
     """모든 명령어 처리를 담당하는 함수"""

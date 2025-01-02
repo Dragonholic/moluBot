@@ -9,6 +9,13 @@ logger = logging.getLogger(__name__)
 # 토큰 사용량 저장을 위한 임시 저장소 (실제로는 DB 사용 필요)
 token_usage = defaultdict(list)
 
+# Claude 3 Sonnet 가격 (2024년 3월 기준)
+PRICE_PER_TOKEN = 0.0000037  # $3 per million tokens ($0.0000037 per token)
+
+def calculate_cost(total_tokens: int) -> float:
+    """토큰 수를 달러로 환산합니다"""
+    return total_tokens * PRICE_PER_TOKEN
+
 async def log_token_usage(room: str, tokens_used: int, timestamp: datetime, task: str = "chat"):
     """토큰 사용량을 기록합니다"""
     try:
@@ -34,7 +41,8 @@ async def get_monthly_usage():
                 if usage['timestamp'] >= month_start:
                     total_tokens += usage['tokens']
         
-        return f"{total_tokens:,} 토큰"
+        total_cost = calculate_cost(total_tokens)
+        return f"{total_tokens:,} 토큰 (약 ${total_cost:.2f})"
     except Exception as e:
         logger.error(f"토큰 사용량 조회 중 오류: {str(e)}")
         return "조회 중 오류 발생"
@@ -73,8 +81,9 @@ async def predict_monthly_usage():
         
         # 전체 예측값 계산
         predicted_total = int(model.predict([[total_days - 1]])[0] * total_days / len(days))
+        predicted_cost = calculate_cost(predicted_total)
         
-        return f"예상 사용량: {predicted_total:,} 토큰"
+        return f"예상 사용량: {predicted_total:,} 토큰 (약 ${predicted_cost:.2f})"
         
     except Exception as e:
         logger.error(f"토큰 사용량 예측 중 오류: {str(e)}")

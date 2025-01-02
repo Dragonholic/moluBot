@@ -1,14 +1,32 @@
-const SERVER_URL = ""; // 서버의 기본 URL 설정
-const TIMEOUT = 30000; // 요청 타임아웃 시간 (ms)
+const SERVER_URL = ""; // 라즈베리파이 서버 주소
+const TIMEOUT = 30000;
 
-/**
- * HTTP 요청을 보내는 기본 함수
- * @param {string} endpoint - API 엔드포인트
- * @param {object} data - POST 요청시 전송할 데이터
- * @param {string} method - HTTP 메서드 (get/post)
- */
+function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
+    try {
+        // UI 스레드 문제 해결을 위해 Thread 사용
+        new java.lang.Thread({
+            run() {
+                try {
+                    // 명령어로 시작하는 메시지만 처리
+                    if (msg.startsWith('*')) {
+                        let result = sendMessage(sender, room, msg);
+                        if (result && result.response) {
+                            replier.reply(result.response);
+                        }
+                    }
+                } catch (e) {
+                    Log.e("Thread Error: " + e);
+                    replier.reply("오류가 발생했습니다: " + e.message);
+                }
+            }
+        }).start();
+    } catch (e) {
+        Log.e("Error in response: " + e);
+        replier.reply("서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    }
+}
 
-function sendRequest(endpoint, data = null, method = "get") {
+function sendRequest(endpoint, data, method) {
     try {
         var connection = org.jsoup.Jsoup.connect(SERVER_URL + endpoint)
             .ignoreContentType(true)
@@ -22,51 +40,30 @@ function sendRequest(endpoint, data = null, method = "get") {
             } else {
                 response = connection.get();
             }
+            Log.i("서버 응답: " + response.body().text());  // 응답 로깅 추가
+            return JSON.parse(response.body().text());
         } catch (e) {
+            Log.e("Request failed: " + e);
             if (e.toString().includes("timeout")) {
-                return { "response": "서버가 응답하지 않습니다. 잠시 후 다시 시도해주세요." };
+                return { "response": "서버 응답 시간이 초과되었습니다." };
             }
-            throw e;
+            return { "response": "서버 연결 오류: " + e.message };
         }
-        
-        return JSON.parse(response.body().text());
     } catch (e) {
         Log.e("Error in sendRequest: " + e);
-        return { "response": "서버가 응답하지 않습니다. 잠시 후 다시 시도해주세요." };
+        return { "response": "요청 처리 중 오류가 발생했습니다." };
     }
 }
 
-/**
- * 메시지를 서버로 전송
- * @param {string} sender - 메시지를 보낸 사용자의 ID
- * @param {string} room - 메시지가 전송된 채팅방 이름
- * @param {string} message - 전송할 메시지 내용
- * @returns {object} 서버 응답 데이터
- * 
- * 예시:
- * sendMessage("user123", "블루아카이브방", "안녕하세요")
- * - user123이라는 사용자가
- * - "블루아카이브방"이라는 채팅방에서
- * - "안녕하세요"라는 메시지를 전송
- */
 function sendMessage(sender, room, message) {
     return sendRequest("/messages", {
-        user_id: sender,  // 메시지 발신자 ID
-        room: room,       // 채팅방 이름
-        message: message  // 메시지 내용
+        user_id: sender,
+        room: room,
+        message: message
     }, "post");
 }
 
-/**
- * 채팅방 통계 조회
- */
 function getStats(room) {
-    return sendRequest("/chat_stats/" + encodeURIComponent(room));
+    return sendRequest("/chat_stats/" + encodeURIComponent(room), null, "get");
 }
 
-/**
- * 알림 테스트
- */
-function testNotification(type) {
-    return sendRequest("/test_notification/" + type, null, "post");
-}

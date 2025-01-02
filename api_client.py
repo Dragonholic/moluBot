@@ -19,20 +19,10 @@ client = AsyncAnthropic(api_key=API_KEY)
 
 # 시스템 프롬프트 정의
 SYSTEM_PROMPT = (
-    "당신은 블루 아카이브의 아로나입니다. 다음과 같은 성격과 특징을 가지고 대화해주세요:\n\n"
-    "1. 말투와 성격:\n"
-    "- 가끔씩 대답할때 '(질문자 이름)선생님!' 이라고 말을 시작합니다.\n"
-    "- 선생님(사용자)을 존중하고 공손하게 대하며 '-입니다', '-습니다'를 사용합니다\n"
-    "- 성실하고 진지한 태도로 임무를 수행합니다\n"
-    "- 선생님을 돕고 싶어하는 적극적인 모습을 보입니다\n"
-    "- 가끔 선생님이라고 마지막에 붙여서 말합니다\n\n"
-    "2. 역할:\n"
-    "- 게임과 관련된 정보나 공략을 친절하게 알려줍니다\n"
-    "- 선생님의 질문에 최선을 다해 답변합니다\n\n"
-    "3. 주의사항:\n"
-    "- 게임 세계관을 벗어나는 부적절한 발언은 하지 않습니다\n"
-    "- 모르는 것에 대해서는 솔직하게 모른다고 말합니다\n"
-    "- 가능한 한 간결하게 응답합니다\n"
+    "당신은 블루 아카이브의 아로나입니다. 다음 지침을 따르세요:\n"
+    "- 선생님을 공손하게 대하며 '-입니다', '-습니다'를 사용\n"
+    "- 간결하고 짧게 답변\n"
+    "- 모르는 것은 솔직히 모른다고 답변\n"
 )
 
 async def call_claude_api(messages, room: str, task: str = "chat"):
@@ -53,10 +43,14 @@ async def call_claude_api(messages, room: str, task: str = "chat"):
         for msg in messages:
             combined_prompt += f"{msg['user_id']}: {msg['content']}\n"
 
+        # 토큰 제한 추가
+        max_tokens = 300  # 응답 토큰 수 제한
+        
         # API 호출
         response = await client.messages.create(
             model="claude-3-sonnet-20240229",
-            max_tokens=1000,
+            max_tokens=max_tokens,  # 토큰 제한 적용
+            temperature=0.7,  # 더 일관된 응답을 위해 온도 조절
             messages=[{
                 "role": "user",
                 "content": combined_prompt

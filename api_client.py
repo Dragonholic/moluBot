@@ -3,6 +3,10 @@ import os
 import logging
 from datetime import datetime
 from features.token_monitor import log_token_usage
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 

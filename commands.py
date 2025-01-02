@@ -1,8 +1,8 @@
 from features.personality import analyze_personality
 from features.notifications import check_stroking_time, check_galaxy_coupon, check_character_birthday, check_shop_reset
 from features.guide import save_guide, get_guide, add_admin, is_admin, remove_admin
-from features.token_monitor import log_token_usage, get_monthly_usage, predict_monthly_usage
-from molu import call_claude_api
+from features.token_monitor import get_monthly_usage, predict_monthly_usage
+from api_client import call_claude_api
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,6 @@ HELP_MESSAGE = """🤖 아로나 봇 도움말
 !공략저장 [키워드] [URL] - 공략 URL을 저장합니다
 !관리자추가 [사용자ID] - 새로운 관리자를 추가합니다
 !관리자삭제 [사용자ID] - 관리자를 삭제합니다
-!봇대화 [on/off] - 봇 대화를 켜거나 끕니다
 💡 예시
 - !공략 호시노
 - !사이트저장 미래시 https://example.com
@@ -34,14 +33,7 @@ async def handle_commands(command: str, message, room: str):
     try:
         # 쓰다듬기 + 상점 초기화 알림
         if command == "쓰담":
-            stroking_result = await check_stroking_time()
-            shop_result = await check_shop_reset()
-            
-            combined_response = stroking_result
-            if shop_result and "마지막 날" in shop_result:
-                combined_response += "\n\n" + shop_result
-            
-            return {"response": combined_response}
+            return {"response": await check_stroking_time()}
         
         # 관리자 명령어
         elif command.startswith("관리자"):

@@ -30,6 +30,11 @@ ALLOWED_ROOMS = [
     "DebugRoom"
 ]
 
+@app.get("/ping")
+async def ping():
+    logger.info("ping 요청 받음")
+    return {"response": "pong"}
+
 @app.post("/messages")
 async def handle_message(message: Message):
     try:

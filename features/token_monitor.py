@@ -1,115 +1,81 @@
-import json
-import os
+import logging
 from datetime import datetime, timedelta
 import numpy as np
-from typing import Dict, List, Tuple
 from sklearn.linear_model import LinearRegression
+from collections import defaultdict
 
-TOKEN_USAGE_FILE = "data/token_usage.json"
-os.makedirs("data", exist_ok=True)
+logger = logging.getLogger(__name__)
 
-# 토큰 사용량 저장 파일 초기화
-if not os.path.exists(TOKEN_USAGE_FILE):
-    with open(TOKEN_USAGE_FILE, 'w', encoding='utf-8') as f:
-        json.dump({"usage": []}, f)
+# 토큰 사용량 저장을 위한 임시 저장소 (실제로는 DB 사용 필요)
+token_usage = defaultdict(list)
 
-async def log_token_usage(input_tokens: int, output_tokens: int):
-    """토큰 사용량 기록"""
+async def log_token_usage(room: str, tokens_used: int, timestamp: datetime, task: str = "chat"):
+    """토큰 사용량을 기록합니다"""
     try:
-        with open(TOKEN_USAGE_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        
-        # 비용 계산
-        input_cost = input_tokens * 0.0000037  # $3/MTok
-        output_cost = output_tokens * 0.000015  # $15/MTok
-        total_cost = input_cost + output_cost
-        
-        # 현재 날짜와 토큰 사용량 기록
-        usage = {
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "total_tokens": input_tokens + output_tokens,
-            "input_cost": input_cost,
-            "output_cost": output_cost,
-            "total_cost": total_cost
-        }
-        
-        data["usage"].append(usage)
-        
-        with open(TOKEN_USAGE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-            
+        # 토큰 사용량 기록
+        token_usage[room].append({
+            'tokens': tokens_used,
+            'timestamp': timestamp,
+            'task': task
+        })
+        logger.info(f"토큰 사용 기록: {room}, {tokens_used} tokens, {task}")
     except Exception as e:
-        print(f"토큰 사용량 기록 중 오류: {str(e)}")
+        logger.error(f"토큰 사용량 기록 중 오류: {str(e)}")
 
-async def get_monthly_usage() -> Dict:
-    """현재 달의 토큰 사용량 조회"""
+async def get_monthly_usage():
+    """이번 달 토큰 사용량을 반환합니다"""
     try:
-        with open(TOKEN_USAGE_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+        now = datetime.now()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         
-        current_month = datetime.now().strftime("%Y-%m")
-        monthly_usage = {
-            "input_tokens": 0,
-            "output_tokens": 0,
-            "total_tokens": 0,
-            "input_cost": 0,
-            "output_cost": 0,
-            "total_cost": 0
-        }
+        total_tokens = 0
+        for room in token_usage:
+            for usage in token_usage[room]:
+                if usage['timestamp'] >= month_start:
+                    total_tokens += usage['tokens']
         
-        for usage in data["usage"]:
-            usage_date = datetime.strptime(usage["date"], "%Y-%m-%d")
-            if usage_date.strftime("%Y-%m") == current_month:
-                monthly_usage["input_tokens"] += usage["input_tokens"]
-                monthly_usage["output_tokens"] += usage["output_tokens"]
-                monthly_usage["total_tokens"] += usage["total_tokens"]
-                monthly_usage["input_cost"] += usage["input_cost"]
-                monthly_usage["output_cost"] += usage["output_cost"]
-                monthly_usage["total_cost"] += usage["total_cost"]
-        
-        return monthly_usage
-    
+        return f"{total_tokens:,} 토큰"
     except Exception as e:
-        return {"error": str(e)}
+        logger.error(f"토큰 사용량 조회 중 오류: {str(e)}")
+        return "조회 중 오류 발생"
 
-async def predict_monthly_usage() -> Dict:
-    """선형 회귀를 사용한 월간 사용량 예측"""
+async def predict_monthly_usage():
+    """이번 달 예상 토큰 사용량을 선형회귀로 계산합니다"""
     try:
-        with open(TOKEN_USAGE_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+        now = datetime.now()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         
-        if len(data["usage"]) < 7:  # 최소 7일의 데이터 필요
-            return {"error": "예측을 위한 충분한 데이터가 없습니다."}
+        # 일별 사용량 집계
+        daily_usage = defaultdict(int)
+        for room in token_usage:
+            for usage in token_usage[room]:
+                if usage['timestamp'] >= month_start:
+                    day = usage['timestamp'].date()
+                    daily_usage[day] += usage['tokens']
         
-        # 데이터 준비
-        dates = []
-        daily_totals = []
+        if not daily_usage:
+            return "데이터가 충분하지 않습니다"
         
-        for usage in data["usage"]:
-            dates.append(datetime.strptime(usage["date"], "%Y-%m-%d").timestamp())
-            daily_totals.append(usage["total_tokens"])
+        # 선형회귀를 위한 데이터 준비
+        days = [(date - month_start.date()).days for date in daily_usage.keys()]
+        tokens = list(daily_usage.values())
         
-        # 선형 회귀 수행
-        X = np.array(dates).reshape(-1, 1)
-        y = np.array(daily_totals)
+        X = np.array(days).reshape(-1, 1)
+        y = np.array(tokens)
+        
+        # 선형회귀 모델 학습
         model = LinearRegression()
         model.fit(X, y)
         
-        # 한 달 후 예측
-        future_date = datetime.now() + timedelta(days=30)
-        future_prediction = model.predict([[future_date.timestamp()]])[0]
+        # 이번 달 마지막 날까지 예측
+        last_day = (month_start.replace(month=month_start.month + 1) - timedelta(days=1)).date()
+        total_days = (last_day - month_start.date()).days + 1
         
-        # 월간 예상 사용량 및 비용
-        predicted_monthly = future_prediction * 30
-        predicted_cost = predicted_monthly * 0.000015  # 평균 토큰 비용 사용
+        # 전체 예측값 계산
+        predicted_total = int(model.predict([[total_days - 1]])[0] * total_days / len(days))
         
-        return {
-            "predicted_monthly_tokens": int(predicted_monthly),
-            "predicted_monthly_cost": round(predicted_cost, 2),
-            "confidence": round(model.score(X, y) * 100, 2)  # 예측 신뢰도
-        }
+        return f"예상 사용량: {predicted_total:,} 토큰"
         
     except Exception as e:
-        return {"error": str(e)} 
+        logger.error(f"토큰 사용량 예측 중 오류: {str(e)}")
+        return "예측 중 오류 발생" 

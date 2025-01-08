@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import logging
@@ -6,7 +7,15 @@ import asyncio
 import threading
 from commands import handle_commands
 from test_endpoints import router as test_router
+from datetime import datetime
+from fastapi.responses import FileResponse
 
+# 로깅 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 logger = logging.getLogger(__name__)
 app = FastAPI()
 
@@ -97,29 +106,56 @@ def console_input():
 @app.post("/messages")
 async def handle_message(message: Message):
     try:
-        logger.info(f"카톡 메시지 받음: {message}")
+        start_time = datetime.now()
+        
+        # 실시간 메시지 출력
+        current_time = start_time.strftime('%H:%M:%S.%f')[:-3]
+        print(f"\n[{current_time}] 메시지 수신 {message.room}")
+        print(f"└─ {message.user_id}: {message.message}")
         
         if message.message.startswith('*'):
             command = message.message[1:].strip()
-            return await handle_commands(command, message, message.room)
+            command_start = datetime.now()
+            response = await handle_commands(command, message, message.room)
+            command_end = datetime.now()
+            
+            if response and response.get("response"):
+                print(f"└─ 봇 응답: {response['response']}")
+                print(f"└─ 명령어 처리 시간: {(command_end - command_start).total_seconds()*1000:.0f}ms")
+            
+            return response
         
-        # AI 채팅 처리 (활성화된 경우에만)
         elif config.ai_chat_enabled:
             from api_client import call_claude_api
+            api_start = datetime.now()
             response = await call_claude_api(
                 messages=[{"user_id": message.user_id, "content": message.message}],
                 room=message.room
             )
+            api_end = datetime.now()
+            
+            print(f"└─ 봇 응답: {response}")
+            print(f"└─ API 응답 시간: {(api_end - api_start).total_seconds()*1000:.0f}ms")
             return {"response": response}
+        
+        end_time = datetime.now()
+        total_time = (end_time - start_time).total_seconds() * 1000
+        print(f"└─ 총 처리 시간: {total_time:.0f}ms")
         
         return {"response": None}
         
     except Exception as e:
-        logger.error(f"메시지 처리 중 오류: {str(e)}")
-        return {"response": f"오류가 발생했습니다: {str(e)}"}
+        error_msg = f"오류가 발생했습니다: {str(e)}"
+        print(f"└─ 오류: {error_msg}")
+        return {"response": error_msg}
 
 # 테스트 라우터 추가
 app.include_router(test_router, prefix="/test", tags=["test"])
+
+@app.get("/favicon.ico")
+async def favicon():
+    return {"message": "No favicon"}  # 또는 실제 favicon 파일이 있다면:
+    # return FileResponse("static/favicon.ico")
 
 if __name__ == "__main__":
     print("\n=== 몰루봇 서버 시작 ===")

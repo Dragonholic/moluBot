@@ -1,7 +1,12 @@
 from features.personality import analyze_personality
-from features.notifications import check_stroking_time, check_galaxy_coupon, check_character_birthday, check_shop_reset
+from features.notifications import (
+    check_stroking_time, 
+    check_character_birthday, 
+    check_shop_reset,
+    NOTIFICATION_ROOMS
+)
 from features.guide import save_guide, get_guide, add_admin, is_admin, remove_admin
-from features.token_monitor import get_monthly_usage, predict_monthly_usage
+from features.token_monitor import log_token_usage, get_monthly_usage, predict_monthly_usage
 from api_client import call_claude_api
 import logging
 
@@ -17,23 +22,33 @@ HELP_MESSAGE = """🤖 아로나 봇 도움말
 *사이트저장 [키워드] [URL] - 사이트 주소를 저장합니다
 *사이트목록 - 저장된 사이트 목록을 확인합니다
 *[키워드] - 저장된 사이트 주소를 빠르게 확인합니다 (예: *미래시)
-📌 관리자 명령어
-*공략저장 [키워드] [URL] - 공략 URL을 저장합니다
-*관리자추가 [사용자ID] - 새로운 관리자를 추가합니다
-*관리자삭제 [사용자ID] - 관리자를 삭제합니다
 💡 예시
 - *공략 호시노
-- *사이트저장 미래시 https://example.com
+- *사이트저장 미래시 [사이트 주소]
 - *사이트목록
 """
 
 async def handle_commands(command: str, message, room: str):
     """모든 명령어 처리를 담당하는 함수"""
     try:
-        # 쓰다듬기 + 상점 초기화 알림
-        if command == "쓰담":
-            return {"response": await check_stroking_time()}
-        
+        if command == "생일":
+            # 생일 알림 처리
+            response = await check_character_birthday([room])
+            # 상점 초기화 알림 추가
+            shop_notice = await check_shop_reset()
+            if shop_notice:
+                response = f"{response}\n\n{shop_notice}" if response else shop_notice
+            return {"response": response}
+            
+        elif command == "쓰담":
+            # 쓰다듬기 알림 처리
+            response = await check_stroking_time([room])
+            # 상점 초기화 알림 추가
+            shop_notice = await check_shop_reset()
+            if shop_notice:
+                response = f"{response}\n\n{shop_notice}" if response else shop_notice
+            return {"response": response}
+            
         # 관리자 명령어
         elif command.startswith("관리자"):
             return await handle_admin_commands(command, message.user_id)

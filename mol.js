@@ -36,14 +36,17 @@ function sendRequest(endpoint, data, method) {
         var response;
         try {
             if (method === "post") {
+                Log.i("요청 URL: " + SERVER_URL + endpoint);
+                Log.i("요청 데이터: " + JSON.stringify(data));
                 response = connection.requestBody(JSON.stringify(data)).post();
             } else {
                 response = connection.get();
             }
-            Log.i("서버 응답: " + response.body().text());  // 응답 로깅 추가
+            Log.i("서버 응답: " + response.body().text());
             return JSON.parse(response.body().text());
         } catch (e) {
             Log.e("Request failed: " + e);
+            Log.e("Stack trace: " + e.stack);
             if (e.toString().includes("timeout")) {
                 return { "response": "서버 응답 시간이 초과되었습니다." };
             }
@@ -51,6 +54,7 @@ function sendRequest(endpoint, data, method) {
         }
     } catch (e) {
         Log.e("Error in sendRequest: " + e);
+        Log.e("Stack trace: " + e.stack);
         return { "response": "요청 처리 중 오류가 발생했습니다." };
     }
 }

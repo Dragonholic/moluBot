@@ -9,8 +9,11 @@ from features.guide import save_guide, get_guide, add_admin, is_admin, remove_ad
 from features.token_monitor import log_token_usage, get_monthly_usage, predict_monthly_usage
 from api_client import call_claude_api
 import logging
+from molu import config
 
 logger = logging.getLogger(__name__)
+
+ADMIN_ROOM = "프로젝� 아로나"  # 관리자 권한이 있는 방
 
 HELP_MESSAGE = """🤖 아로나 봇 도움말
 📌 기본 명령어
@@ -29,9 +32,71 @@ HELP_MESSAGE = """🤖 아로나 봇 도움말
 """
 
 async def handle_commands(command: str, message, room: str):
-    """모든 명령어 처리를 담당하는 함수"""
+    """프롬프팅 명령어를 처리합니다."""
     try:
-        if command == "생일":
+        parts = command.split()
+        cmd = parts[0].lower()
+
+        if cmd == "도움말":
+            # 현재 방이 관리자 방인 경우에만 프롬프트 관련 도움말 표시
+            base_help = "사용 가능한 명령어:\n*도움말 - 이 도움말을 표시합니다"
+            
+            if room == ADMIN_ROOM:
+                admin_help = """\n[프롬프트 관리]
+*프롬프트 목록 - 저장된 프롬프트 목록
+*프롬프트 보기 - 현재 프롬프트 내용
+*프롬프트 추가 [이름] [내용] - 새 프롬프트 추가
+*프롬프트 사용 [이름] - 프롬프트 변경
+*프롬프트 수정 [이름] [내용] - 프롬프트 수정"""
+                return {"response": base_help + admin_help}
+            return {"response": base_help}
+
+        elif cmd == "프롬프트":
+            # 관리자 방이 아닌 경우 권한 없음 메시지 반환
+            if room != ADMIN_ROOM:
+                return {"response": "프롬프트 관리는 관리자 방에서만 가능합니다."}
+            
+            if len(parts) < 2:
+                return {"response": "사용법: *프롬프트 [목록/보기/추가/사용/수정]"}
+            
+            subcmd = parts[1]
+            
+            if subcmd == "목록":
+                prompts = "\n".join([
+                    f"{'* ' if name == config.current_prompt else '  '}{name}"
+                    for name in config.prompts
+                ])
+                return {"response": f"=== 프롬프트 목록 ===\n{prompts}"}
+            
+            elif subcmd == "보기":
+                current = config.current_prompt
+                content = config.prompts[current]
+                return {"response": f"=== 현재 프롬프트 ({current}) ===\n{content}"}
+            
+            elif subcmd == "추가" and len(parts) >= 4:
+                name = parts[2]
+                content = " ".join(parts[3:])
+                if name in config.prompts:
+                    return {"response": "이미 존재하는 프롬프트 이름입니다."}
+                config.prompts[name] = content
+                return {"response": f"프롬프트 '{name}' 추가됨"}
+            
+            elif subcmd == "사용" and len(parts) >= 3:
+                name = parts[2]
+                if name not in config.prompts:
+                    return {"response": "존재하지 않는 프롬프트입니다."}
+                config.current_prompt = name
+                return {"response": f"프롬프트를 '{name}'으로 변경했습니다."}
+            
+            elif subcmd == "수정" and len(parts) >= 4:
+                name = parts[2]
+                content = " ".join(parts[3:])
+                if name not in config.prompts:
+                    return {"response": "존재하지 않는 프롬프트입니다."}
+                config.prompts[name] = content
+                return {"response": f"프롬프트 '{name}' 수정됨"}
+
+        elif cmd == "생일":
             # 생일 알림 처리
             response = await check_character_birthday([room])
             # 상점 초기화 알림 추가
@@ -40,7 +105,7 @@ async def handle_commands(command: str, message, room: str):
                 response = f"{response}\n\n{shop_notice}" if response else shop_notice
             return {"response": response}
             
-        elif command == "쓰담":
+        elif cmd == "쓰담":
             # 쓰다듬기 알림 처리
             response = await check_stroking_time([room])
             # 상점 초기화 알림 추가
@@ -50,25 +115,21 @@ async def handle_commands(command: str, message, room: str):
             return {"response": response}
             
         # 관리자 명령어
-        elif command.startswith("관리자"):
+        elif cmd.startswith("관리자"):
             return await handle_admin_commands(command, message.user_id)
         
         # 공략 관련 명령어
-        elif command.startswith("공략"):
+        elif cmd.startswith("공략"):
             return await handle_guide_commands(command, message.user_id)
         
         # 토큰 사용량 확인
-        elif command == "토큰":
+        elif cmd == "토큰":
             usage = await get_monthly_usage()
             prediction = await predict_monthly_usage()
             return {"response": f"이번 달 토큰 사용량: {usage}\n예상 사용량: {prediction}"}
         
-        # 도움말
-        elif command == "도움말":
-            return {"response": HELP_MESSAGE}
-        
         # 핑
-        elif command == "ping":
+        elif cmd == "ping":
             return {"response": "pong!"}
         
         # 기타 명령어는 Claude API로

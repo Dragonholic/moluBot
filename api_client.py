@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 from features.token_monitor import log_token_usage
 from dotenv import load_dotenv
+from config import config
 
 # .env 파일 로드
 load_dotenv()
@@ -38,8 +39,11 @@ async def call_claude_api(messages, room: str, task: str = "chat"):
         str: Claude API의 응답 텍스트
     """
     try:
+        # 현재 �정된 프롬프트 사용
+        system_prompt = config.prompts[config.current_prompt]
+        
         # 시스템 프롬프트와 사용자 메시지 결합
-        combined_prompt = f"{SYSTEM_PROMPT}\n\n"
+        combined_prompt = f"{system_prompt}\n\n"
         for msg in messages:
             combined_prompt += f"{msg['user_id']}: {msg['content']}\n"
 

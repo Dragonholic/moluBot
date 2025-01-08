@@ -20,20 +20,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 app = FastAPI()
 
-# 전역 설정
-class BotConfig:
-    def __init__(self):
-        self.allowed_rooms = [
-            "몰루 아카이브 PGR",
-            "PGR21 생성AI,LLM,StableDiffusion",
-            "프로젝트 아로나",
-            "DebugRoom"
-        ]
-        self.ai_chat_enabled = True
-
-config = BotConfig()
-
-# 메시지 모델 정의
+# ��시지 모델 정의
 class Message(BaseModel):
     user_id: str
     room: str
@@ -49,6 +36,7 @@ def handle_console_command(command: str):
             print("remove [방이름] - 채팅방 삭제")
             print("ai on - AI 채팅 활성화")
             print("ai off - AI 채팅 비활성화")
+            print("prompt - 현재 프롬프트 설정 표시")
             print("status - 현재 설정 상태 표시")
             print("exit - 서버 종료")
             
@@ -81,9 +69,14 @@ def handle_console_command(command: str):
             config.ai_chat_enabled = False
             print("AI 채팅이 비활성화되었습니다")
             
+        elif command == "prompt":
+            print(f"\n=== 현재 프롬프트 ({config.current_prompt}) ===")
+            print(config.prompts[config.current_prompt])
+            
         elif command == "status":
             print("\n=== 현재 설정 상태 ===")
             print(f"AI 채팅: {'활성화' if config.ai_chat_enabled else '비활성화'}")
+            print(f"현재 프롬프트: {config.current_prompt}")
             print("\n등록된 채팅방:")
             for room in config.allowed_rooms:
                 print(f"- {room}")

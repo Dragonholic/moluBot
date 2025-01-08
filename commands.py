@@ -1,44 +1,16 @@
-from features.personality import analyze_personality
-from features.notifications import (
-    check_stroking_time, 
-    check_character_birthday, 
-    check_shop_reset,
-    NOTIFICATION_ROOMS
-)
-from features.guide import save_guide, get_guide, add_admin, is_admin, remove_admin
-from features.token_monitor import log_token_usage, get_monthly_usage, predict_monthly_usage
-from api_client import call_claude_api
+from config import config
 import logging
-from molu import config
 
 logger = logging.getLogger(__name__)
-
-ADMIN_ROOM = "프로젝� 아로나"  # 관리자 권한이 있는 방
-
-HELP_MESSAGE = """🤖 아로나 봇 도움말
-📌 기본 명령어
-*도움말 - 이 도움말을 표시합니다
-*공략 [키워드] - 게임 공략을 검색합니다
-*관리자확인 - 현재 등록된 관리자 목록을 확인합니다
-*통계 [사용자ID] - 채팅방 통계를 확인합니다 (사용자ID 생략 가능)
-*토큰 - 토큰 사용량을 확인합니다
-*사이트저장 [키워드] [URL] - 사이트 주소를 저장합니다
-*사이트목록 - 저장된 사이트 목록을 확인합니다
-*[키워드] - 저장된 사이트 주소를 빠르게 확인합니다 (예: *미래시)
-💡 예시
-- *공략 호시노
-- *사이트저장 미래시 [사이트 주소]
-- *사이트목록
-"""
+ADMIN_ROOM = "프로젝트 아로나"
 
 async def handle_commands(command: str, message, room: str):
-    """프롬프팅 명령어를 처리합니다."""
+    """채팅 명령어를 처리합니다."""
     try:
         parts = command.split()
         cmd = parts[0].lower()
 
         if cmd == "도움말":
-            # 현재 방이 관리자 방인 경우에만 프롬프트 관련 도움말 표시
             base_help = "사용 가능한 명령어:\n*도움말 - 이 도움말을 표시합니다"
             
             if room == ADMIN_ROOM:
@@ -52,7 +24,6 @@ async def handle_commands(command: str, message, room: str):
             return {"response": base_help}
 
         elif cmd == "프롬프트":
-            # 관리자 방이 아닌 경우 권한 없음 메시지 반환
             if room != ADMIN_ROOM:
                 return {"response": "프롬프트 관리는 관리자 방에서만 가능합니다."}
             

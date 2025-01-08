@@ -9,6 +9,7 @@ from commands import handle_commands
 from test_endpoints import router as test_router
 from datetime import datetime
 from fastapi.responses import FileResponse
+from config import config
 
 # 로깅 설정
 logging.basicConfig(
@@ -159,7 +160,7 @@ async def favicon():
 
 if __name__ == "__main__":
     print("\n=== 몰루봇 서버 시작 ===")
-    print("'help'를 입력하여 사용 가능한 명령어를 확인하세요.")
+    print("'help'를 입력력하여 사용 가능한 명령어를 확인하세요.")
     
     # 콘솔 입력 스레드 시작
     threading.Thread(target=console_input, daemon=True).start()

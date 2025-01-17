@@ -52,7 +52,7 @@ async def call_claude_api(messages, room: str, task: str = "chat"):
         
         # API 호출
         response = await client.messages.create(
-            model="claude-3-sonnet-20240229",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=max_tokens,  # 토큰 제한 적용
             temperature=0.7,  # 더 일관된 응답을 위해 온도 조절
             messages=[{

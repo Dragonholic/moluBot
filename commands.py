@@ -10,59 +10,78 @@ from features.notifications import (
 )
 from features.admin import is_admin, add_admin, remove_admin
 from features.guide import save_guide, get_guide
+from features.sites import save_site, get_site, get_site_list, delete_site
+from features.chat_stats import get_user_stats, log_chat
 
 logger = logging.getLogger(__name__)
 ADMIN_ROOM = "프로젝트 아로나"
 
+# 일반 채팅방용 도움말
 HELP_MESSAGE = """🤖 아로나 봇 도움말
 📌 기본 명령어
 *도움말 - 이 도움말을 표시합니다
-*공략 [키워드] - 게임 공략을 검색합니다
 *관리자확인 - 현재 등록된 관리자 목록을 확인합니다
-*통계 [사용자ID] - 채팅방 통계를 확인합니다 (사용자ID 생략 가능)
 *토큰 - 토큰 사용량을 확인합니다
-*사이트저장 [키워드] [URL] - 사이트 주소를 저장합니다
-*사이트목록 - 저장된 사이트 목록을 확인합니다
-*[키워드] - 저장된 사이트 주소를 빠르게 확인합니다 (예: *미래시)
+*생일 - 오늘의 생일 캐릭터를 확인합니다
+*쓰담 - 쓰다듬기 알림을 확인합니다
+*ping - 봇 상태를 확인합니다
+
+[채팅 통계]
+*통계 - 채팅방 전체 통계를 확인합니다
+*통계 [사용자ID] - 특정 사용자의 통계를 확인합니다
+
+[사이트/공략 관리]
+*저장 [키워드] [URL] - 사이트/공략 주소를 저장합니다
+*삭제 [키워드] - 저장된 사이트/공략을 삭제합니다
+*목록 - 저장된 사이트/공략 목록을 확인합니다
+*[키워드] - 저장된 사이트/공략을 검색합니다
+
 💡 예시
-- *공략 호시노
-- *사이트저장 미래시 [사이트 주소]
-- *사이트목록
+- *통계
+- *통계 user123
+- *저장 미래시 https://example.com
+- *목록
+- *호시노
+- *삭제 미래시
 """
 
-async def handle_commands(command: str, message, room: str):
-    """채팅 명령어를 처리합니다."""
-    try:
-        parts = command.split()
-        cmd = parts[0].lower()
-
-        if cmd == "도움말":
-            base_help = HELP_MESSAGE
-            
-            if room == ADMIN_ROOM:
-                admin_help = """\n[프롬프트 관리]
+# 관리자 채팅방용 추가 도움말
+ADMIN_HELP = """
+📌 관리자 전용 명령어
+[프롬프트 관리]
 *프롬프트 목록 - 저장된 프롬프트 목록
 *프롬프트 보기 - 현재 프롬프트 내용
 *프롬프트 추가 [이름] [내용] - 새 프롬프트 추가
 *프롬프트 사용 [이름] - 프롬프트 변경
 *프롬프트 수정 [이름] [내용] - 프롬프트 수정
+
+[Temperature 관리]
 *temperature - 현재 temperature 확인
 *temperature [값] - temperature 변경 (0.0-1.0)
-📌 기본 명령어
-*도움말 - 이 도움말을 표시합니다
-*공략 [키워드] - 게임 공략을 검색합니다
-*관리자확인 - 현재 등록된 관리자 목록을 확인합니다
-*통계 [사용자ID] - 채팅방 통계를 확인합니다 (사용자ID 생략 가능)
-*토큰 - 토큰 사용량을 확인합니다
-*사이트저장 [키워드] [URL] - 사이트 주소를 저장합니다
-*사이트목록 - 저장된 사이트 목록을 확인합니다
-*[키워드] - 저장된 사이트 주소를 빠르게 확인합니다 (예: *미래시)
-💡 예시
-- *공략 호시노
-- *사이트저장 미래시 [사이트 주소]
-- *사이트목록"""
-                return {"response": base_help + admin_help}
-            return {"response": base_help}
+
+[관리자 관리]
+*관리자추가 [사용자ID] - 관리자 추가
+*관리자삭제 [사용자ID] - 관리자 삭제
+
+💡 관리자 명령어 예시
+- *프롬프트 목록
+- *temperature 0.3
+- *관리자추가 user123
+"""
+
+async def handle_commands(command: str, message, room: str):
+    """채팅 명령어를 처리합니다."""
+    try:
+        # 채팅 로그 기록
+        await log_chat(message.user_id, room, message.message)
+        
+        parts = command.split()
+        cmd = parts[0].lower()
+
+        if cmd == "도움말":
+            if room == ADMIN_ROOM:
+                return {"response": HELP_MESSAGE + ADMIN_HELP}
+            return {"response": HELP_MESSAGE}
 
         elif cmd == "프롬프트":
             if room != ADMIN_ROOM:
@@ -160,6 +179,34 @@ async def handle_commands(command: str, message, room: str):
                     return {"response": "temperature는 0.0에서 1.0 사이의 값이어야 합니다."}
             except ValueError:
                 return {"response": "올바른 숫자를 입력해주세요."}
+        
+        # 사이트/공략 관련 명령어
+        elif cmd == "목록":
+            result = await get_site_list()
+            return {"response": result["message"]}
+            
+        elif cmd == "저장" and len(parts) >= 3:
+            keyword = parts[1]
+            url = parts[2]
+            result = await save_site(keyword, url, message.user_id)
+            return {"response": result["message"]}
+            
+        elif cmd == "삭제" and len(parts) >= 2:
+            keyword = parts[1]
+            result = await delete_site(keyword)
+            return {"response": result["message"]}
+            
+        # 키워드로 사이트/공략 검색
+        elif result := await get_site(cmd):
+            if result["found"]:
+                return {"response": result["url"]}
+            elif result["status"] == "error":
+                return {"response": f"오류가 발생했습니다: {result['message']}"}
+        
+        elif cmd == "통계":
+            user_id = parts[1] if len(parts) > 1 else None
+            result = await get_user_stats(room, user_id)
+            return {"response": result["message"]}
         
         # 기타 명령어는 Claude API로
         else:

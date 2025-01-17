@@ -10,6 +10,7 @@ from test_endpoints import router as test_router
 from datetime import datetime
 from fastapi.responses import FileResponse
 from config import config
+from features.chat_stats import log_chat
 
 # 로깅 설정
 logging.basicConfig(
@@ -20,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 app = FastAPI()
 
-# ��시지 모델 정의
+# 채팅 메시지 모델 정의
 class Message(BaseModel):
     user_id: str
     room: str

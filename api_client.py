@@ -18,14 +18,6 @@ if not API_KEY:
 
 client = AsyncAnthropic(api_key=API_KEY)
 
-# 시스템 프롬프트 정의
-SYSTEM_PROMPT = (
-    "당신은 블루 아카이브의 아로나입니다. 다음 지침을 따르세요:\n"
-    "- 선생님을 공손하게 대하며 '-입니다', '-습니다'를 사용\n"
-    "- 간결하고 짧게 답변\n"
-    "- 모르는 것은 솔직히 모른다고 답변\n"
-)
-
 async def call_claude_api(messages, room: str, task: str = "chat"):
     """
     Claude API를 호출하여 응답을 받아옵니다.
@@ -48,13 +40,13 @@ async def call_claude_api(messages, room: str, task: str = "chat"):
             combined_prompt += f"{msg['user_id']}: {msg['content']}\n"
 
         # 토큰 제한 추가
-        max_tokens = 300  # 응답 토큰 수 제한
+        max_tokens = 250  # 응답 토큰 수 제한
         
         # API 호출
         response = await client.messages.create(
             model="claude-3-5-sonnet-20241022",
-            max_tokens=max_tokens,  # 토큰 제한 적용
-            temperature=config.temperature,  # config에서 temperature 가져오기
+            max_tokens=max_tokens,
+            temperature=config.temperature,
             messages=[{
                 "role": "user",
                 "content": combined_prompt

@@ -4,44 +4,47 @@ import json
 import os
 import aiofiles
 from typing import Dict, List
+import logging
 
-STATS_FILE = "data/chat_stats.json"
+# 로거 설정
+logger = logging.getLogger(__name__)
+
+# 파일 경로 설정
+CHAT_LOGS_FILE = "data/chat_logs.json"
 
 # 디렉토리 및 파일 생성
 os.makedirs("data", exist_ok=True)
-if not os.path.exists(STATS_FILE):
-    with open(STATS_FILE, 'w', encoding='utf-8') as f:
+if not os.path.exists(CHAT_LOGS_FILE):
+    with open(CHAT_LOGS_FILE, 'w', encoding='utf-8') as f:
         json.dump({}, f)
 
 async def log_chat(user_id: str, room: str, message: str):
     """채팅 로그 기록"""
     try:
-        async with aiofiles.open(STATS_FILE, 'r', encoding='utf-8') as f:
+        async with aiofiles.open(CHAT_LOGS_FILE, 'r', encoding='utf-8') as f:
             content = await f.read()
-            stats = json.loads(content) if content else {}
+            logs = json.loads(content) if content else {}
         
-        if room not in stats:
-            stats[room] = {}
-        if user_id not in stats[room]:
-            stats[room][user_id] = {
-                "message_count": 0,
-                "last_active": "",
-                "first_seen": datetime.now().isoformat()
-            }
+        if room not in logs:
+            logs[room] = {}
+        if user_id not in logs[room]:
+            logs[room][user_id] = []
         
-        stats[room][user_id]["message_count"] += 1
-        stats[room][user_id]["last_active"] = datetime.now().isoformat()
+        logs[room][user_id].append({
+            "message": message,
+            "timestamp": datetime.now().isoformat()
+        })
         
-        async with aiofiles.open(STATS_FILE, 'w', encoding='utf-8') as f:
-            await f.write(json.dumps(stats, ensure_ascii=False, indent=2))
+        async with aiofiles.open(CHAT_LOGS_FILE, 'w', encoding='utf-8') as f:
+            await f.write(json.dumps(logs, ensure_ascii=False, indent=2))
             
     except Exception as e:
-        print(f"채팅 로그 기록 중 오류: {str(e)}")
+        logger.error(f"채팅 로그 기록 중 오류: {str(e)}")
 
 async def get_user_stats(room: str, user_id: str = None) -> Dict[str, str]:
     """채팅 통계를 조회합니다."""
     try:
-        async with aiofiles.open('data/chat_logs.json', 'r', encoding='utf-8') as f:
+        async with aiofiles.open(CHAT_LOGS_FILE, 'r', encoding='utf-8') as f:
             content = await f.read()
             logs = json.loads(content) if content else {}
             

@@ -38,59 +38,58 @@ async def log_chat(user_id: str, room: str, message: str):
     except Exception as e:
         print(f"채팅 로그 기록 중 오류: {str(e)}")
 
-async def get_user_stats(room: str, user_id: str = None) -> Dict:
-    """사용자 통계 조회"""
+async def get_user_stats(room: str, user_id: str = None) -> Dict[str, str]:
+    """채팅 통계를 조회합니다."""
     try:
-        async with aiofiles.open(STATS_FILE, 'r', encoding='utf-8') as f:
+        async with aiofiles.open('data/chat_logs.json', 'r', encoding='utf-8') as f:
             content = await f.read()
-            stats = json.loads(content) if content else {}
+            logs = json.loads(content) if content else {}
+            
+        if room not in logs:
+            return {"message": "해당 채팅방의 기록이 없습니다."}
+            
+        room_logs = logs[room]
         
-        if room not in stats:
-            return {"status": "error", "message": "해당 채팅방의 통계가 없습니다."}
+        if user_id:  # 특정 사용자 통계
+            if user_id not in room_logs:
+                return {"message": f"해당 사용자({user_id})의 기록이 없습니다."}
+                
+            user_messages = room_logs[user_id]
+            message_count = len(user_messages)
+            if message_count == 0:
+                return {"message": f"해당 사용자({user_id})의 기록이 없습니다."}
+                
+            return {
+                "message": f"📊 {user_id}님의 채팅 통계\n"
+                          f"총 메시지 수: {message_count}개"
+            }
             
-        if user_id:
-            if user_id not in stats[room]:
-                return {"status": "error", "message": "해당 사용자의 통계가 없습니다."}
+        else:  # 전체 통계
+            total_messages = sum(len(msgs) for msgs in room_logs.values())
+            user_count = len(room_logs)
             
-            user_stats = stats[room][user_id]
-            first_seen = datetime.fromisoformat(user_stats["first_seen"])
-            last_active = datetime.fromisoformat(user_stats["last_active"])
-            days_active = (last_active - first_seen).days + 1
+            if total_messages == 0:
+                return {"message": "아직 채팅 기록이 없습니다."}
+                
+            # 상위 5명의 사용자 추출
+            top_users = sorted(
+                [(user, len(msgs)) for user, msgs in room_logs.items()],
+                key=lambda x: x[1],
+                reverse=True
+            )[:5]
+            
+            top_users_str = "\n".join(
+                f"{i+1}. {user}: {count}개"
+                for i, (user, count) in enumerate(top_users)
+            )
             
             return {
-                "status": "success",
-                "message": f"=== {user_id}님의 채팅 통계 ===\n"
-                          f"총 메시지: {user_stats['message_count']:,}개\n"
-                          f"하루 평균: {user_stats['message_count']/days_active:.1f}개\n"
-                          f"첫 활동일: {first_seen.strftime('%Y-%m-%d')}\n"
-                          f"마지막 활동: {last_active.strftime('%Y-%m-%d %H:%M')}"
+                "message": f"📊 채팅방 전체 통계\n"
+                          f"총 메시지 수: {total_messages}개\n"
+                          f"참여자 수: {user_count}명\n\n"
+                          f"🏆 가장 많이 채팅한 사용자 TOP 5\n{top_users_str}"
             }
-        
-        # 전체 통계 수정
-        # 메시지 수로 정렬된 사용자 목록 생성
-        sorted_users = sorted(
-            stats[room].items(),
-            key=lambda x: x[1]["message_count"],
-            reverse=True
-        )
-        
-        total_messages = sum(u[1]["message_count"] for u in sorted_users)
-        active_users = len(sorted_users)
-        
-        # 상위 10명의 통계 생성
-        top_users = "\n".join(
-            f"{i+1}위: {user[0]} ({user[1]['message_count']:,}개)"
-            for i, user in enumerate(sorted_users[:10])
-        )
-        
-        return {
-            "status": "success",
-            "message": f"=== 채팅방 전체 통계 ===\n"
-                      f"총 메시지: {total_messages:,}개\n"
-                      f"활성 사용자: {active_users}명\n\n"
-                      f"📊 채팅 순위 (상위 10명)\n"
-                      f"{top_users}"
-        }
-        
+            
     except Exception as e:
-        return {"status": "error", "message": f"통계 조회 중 오류: {str(e)}"} 
+        logger.error(f"채팅 통계 조회 중 오류: {str(e)}")
+        return {"message": "통계를 조회하는 중에 오류가 발생했습니다."} 

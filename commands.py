@@ -46,6 +46,8 @@ async def handle_commands(command: str, message, room: str):
 *프롬프트 추가 [이름] [내용] - 새 프롬프트 추가
 *프롬프트 사용 [이름] - 프롬프트 변경
 *프롬프트 수정 [이름] [내용] - 프롬프트 수정
+*temperature - 현재 temperature 확인
+*temperature [값] - temperature 변경 (0.0-1.0)
 📌 기본 명령어
 *도움말 - 이 도움말을 표시합니다
 *공략 [키워드] - 게임 공략을 검색합니다
@@ -141,6 +143,23 @@ async def handle_commands(command: str, message, room: str):
         # 핑
         elif cmd == "ping":
             return {"response": "pong!"}
+        
+        elif cmd == "temperature":
+            if room != ADMIN_ROOM:
+                return {"response": "temperature 관리는 관리자 방에서만 가능합니다."}
+            
+            if len(parts) == 1:
+                return {"response": f"현재 temperature: {config.temperature}\n사용법: *temperature [0.0-1.0]"}
+            
+            try:
+                new_temp = float(parts[1])
+                if 0.0 <= new_temp <= 1.0:
+                    config.temperature = new_temp
+                    return {"response": f"temperature가 {new_temp}로 변경되었습니다."}
+                else:
+                    return {"response": "temperature는 0.0에서 1.0 사이의 값이어야 합니다."}
+            except ValueError:
+                return {"response": "올바른 숫자를 입력해주세요."}
         
         # 기타 명령어는 Claude API로
         else:

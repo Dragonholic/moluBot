@@ -39,7 +39,7 @@ async def call_claude_api(messages, room: str, task: str = "chat"):
         str: Claude API의 응답 텍스트
     """
     try:
-        # 현재 �정된 프롬프트 사용
+        # 현재 설정된 프롬프트 사용
         system_prompt = config.prompts[config.current_prompt]
         
         # 시스템 프롬프트와 사용자 메시지 결합
@@ -54,7 +54,7 @@ async def call_claude_api(messages, room: str, task: str = "chat"):
         response = await client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=max_tokens,  # 토큰 제한 적용
-            temperature=0.7,  # 더 일관된 응답을 위해 온도 조절
+            temperature=config.temperature,  # config에서 temperature 가져오기
             messages=[{
                 "role": "user",
                 "content": combined_prompt

@@ -78,6 +78,39 @@ async def handle_commands(command: str, message, room: str):
         parts = command.split()
         cmd = parts[0].lower()
 
+        # 통계 명령어를 사이트 검색보다 먼저 처리
+        if cmd == "통계":
+            user_id = parts[1] if len(parts) > 1 else None
+            result = await get_user_stats(room, user_id)
+            return {"response": result["message"]}
+            
+        elif cmd == "목록":
+            result = await get_site_list()
+            return {"response": result["message"]}
+            
+        elif cmd == "저장" and len(parts) >= 3:
+            keyword = parts[1]
+            url = parts[2]
+            result = await save_site(keyword, url, message.user_id)
+            return {"response": result["message"]}
+            
+        elif cmd == "삭제" and len(parts) >= 2:
+            keyword = parts[1]
+            result = await delete_site(keyword)
+            return {"response": result["message"]}
+            
+        # 키워드로 사이트/공략 검색은 마지막에
+        elif result := await get_site(cmd):
+            if result["found"]:
+                site_info = result["url"]
+                return {"response": f"URL: {site_info['url']}\n"
+                                  f"등록자: {site_info['user_id']}\n"
+                                  f"최종수정: {datetime.fromisoformat(site_info['updated_at']).strftime('%Y-%m-%d %H:%M')}"}
+            elif result["status"] == "error":
+                return {"response": f"오류가 발생했습니다: {result['message']}"}
+            else:
+                return {"response": result["message"]}
+        
         if cmd == "도움말":
             if room == ADMIN_ROOM:
                 return {"response": HELP_MESSAGE + ADMIN_HELP}
@@ -179,39 +212,6 @@ async def handle_commands(command: str, message, room: str):
                     return {"response": "temperature는 0.0에서 1.0 사이의 값이어야 합니다."}
             except ValueError:
                 return {"response": "올바른 숫자를 입력해주세요."}
-        
-        # 사이트/공략 관련 명령어
-        elif cmd == "목록":
-            result = await get_site_list()
-            return {"response": result["message"]}
-            
-        elif cmd == "저장" and len(parts) >= 3:
-            keyword = parts[1]
-            url = parts[2]
-            result = await save_site(keyword, url, message.user_id)
-            return {"response": result["message"]}
-            
-        elif cmd == "삭제" and len(parts) >= 2:
-            keyword = parts[1]
-            result = await delete_site(keyword)
-            return {"response": result["message"]}
-            
-        # 키워드로 사이트/공략 검색
-        elif result := await get_site(cmd):
-            if result["found"]:
-                site_info = result["url"]
-                return {"response": f"URL: {site_info['url']}\n"
-                                  f"등록자: {site_info['user_id']}\n"
-                                  f"최종수정: {datetime.fromisoformat(site_info['updated_at']).strftime('%Y-%m-%d %H:%M')}"}
-            elif result["status"] == "error":
-                return {"response": f"오류가 발생했습니다: {result['message']}"}
-            else:
-                return {"response": result["message"]}
-        
-        elif cmd == "통계":
-            user_id = parts[1] if len(parts) > 1 else None
-            result = await get_user_stats(room, user_id)
-            return {"response": result["message"]}
         
         # 기타 명령어는 Claude API로
         else:

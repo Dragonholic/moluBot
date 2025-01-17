@@ -161,13 +161,27 @@ async def send_notification(message: str, room: str) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def check_stroking_time(rooms: List[str]):
-    """
-    매일 16시에 쓰다듬기 알림
-    """
-    message = "선생님 학생들을 쓰다듬을 시간이예요! 게임에 접속해서 학생들을 쓰다듬어주세요~ 😊"
-    for room in rooms:
-        await send_notification(message, room)
+async def check_stroking_time(rooms: list = None) -> str:
+    """쓰다듬기 알림 확인"""
+    try:
+        now = datetime.now()
+        next_time = now.replace(hour=19, minute=0, second=0, microsecond=0)
+        
+        if now.hour >= 19:
+            next_time += timedelta(days=1)
+            
+        time_left = next_time - now
+        hours = time_left.seconds // 3600
+        minutes = (time_left.seconds % 3600) // 60
+        
+        if hours > 0:
+            return f"선생님! 다음 쓰다듬기까지 {hours}시간 {minutes}분 남았어요~"
+        else:
+            return f"선생님! 다음 쓰다듬기까지 {minutes}분 남았어요~"
+            
+    except Exception as e:
+        logger.error(f"쓰다듬기 시간 확인 중 오류: {str(e)}")
+        return "죄송해요 선생님... 쓰다듬기 시간을 확인하다가 문제가 생겼어요."
 
 async def check_galaxy_coupon(rooms: List[str]):
     """
@@ -177,7 +191,7 @@ async def check_galaxy_coupon(rooms: List[str]):
     for room in rooms:
         await send_notification(message, room)
 
-async def check_character_birthday(rooms: List[str]):
+async def check_character_birthday(rooms: List[str]) -> str:
     """
     오늘이 생일인 캐릭터 확인 및 알림
     """
@@ -192,9 +206,13 @@ async def check_character_birthday(rooms: List[str]):
     
     if birthday_characters:
         characters = ", ".join(birthday_characters)
-        message = f"선생님 오늘은 {characters} 의 생일이에요 축하해주세요"
+        message = f"선생님! 오늘은 {characters} 의 생일이에요! 축하해주세요~ 🎂"
+        # 알림 전송
         for room in rooms:
-            await send_notification(message, room) 
+            await send_notification(message, room)
+        return message
+    else:
+        return "선생님, 오늘은 생일인 학생이 없네요!"
 
 async def check_shop_reset():
     """매월 마지막 날 상점 초기화 알림"""

@@ -199,9 +199,14 @@ async def handle_commands(command: str, message, room: str):
         # 키워드로 사이트/공략 검색
         elif result := await get_site(cmd):
             if result["found"]:
-                return {"response": result["url"]}
+                site_info = result["url"]
+                return {"response": f"URL: {site_info['url']}\n"
+                                  f"등록자: {site_info['user_id']}\n"
+                                  f"최종수정: {datetime.fromisoformat(site_info['updated_at']).strftime('%Y-%m-%d %H:%M')}"}
             elif result["status"] == "error":
                 return {"response": f"오류가 발생했습니다: {result['message']}"}
+            else:
+                return {"response": result["message"]}
         
         elif cmd == "통계":
             user_id = parts[1] if len(parts) > 1 else None

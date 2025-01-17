@@ -32,7 +32,10 @@ async def save_site(keyword: str, url: str, user_id: str) -> Dict:
             await f.write(json.dumps(sites, ensure_ascii=False, indent=2))
             
         action = "수정" if is_update else "저장"
-        return {"status": "success", "message": f"'{keyword}' 사이트가 {action}되었습니다."}
+        return {
+            "status": "success", 
+            "message": f"'{keyword}' 사이트가 {action}되었습니다.\nURL: {url}"
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

@@ -76,11 +76,11 @@ async def handle_commands(command: str, message, room: str):
         await log_chat(message.user_id, room, message.message)
         
         # '*'로 시작하지 않는 메시지는 무시
-        if not command.startswith("*"):
+        if not message.message.startswith("*"):
             return {"response": None}
             
         # '*' 제거
-        command = command[1:]
+        command = message.message[1:]
         parts = command.split()
         cmd = parts[0].lower()
 
@@ -119,10 +119,8 @@ async def handle_commands(command: str, message, room: str):
                                   f"최종수정: {datetime.fromisoformat(site_info['updated_at']).strftime('%Y-%m-%d %H:%M')}"}
             return {"response": result["message"]}
             
-        # ... 다른 명령어들 ...
-        
-        # 명령어가 아닌 경우 Claude API로 전달 (*를 제거한 메시지 전달)
-        message.message = message.message[1:]  # '*' 제거
+        # 명령어가 아닌 경우 Claude API로 전달
+        message.message = command  # '*'가 제거된 메시지 사용
         return await handle_claude_api(message, room)
             
     except Exception as e:

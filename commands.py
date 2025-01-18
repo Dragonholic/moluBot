@@ -75,10 +75,16 @@ async def handle_commands(command: str, message, room: str):
         # 채팅 로그 기록
         await log_chat(message.user_id, room, message.message)
         
+        # '*'로 시작하지 않는 메시지는 무시
+        if not command.startswith("*"):
+            return {"response": None}
+            
+        # '*' 제거
+        command = command[1:]
         parts = command.split()
         cmd = parts[0].lower()
 
-        # 모든 명령어를 먼저 처리
+        # 명령어 처리
         if cmd == "도움말":
             if room == ADMIN_ROOM:
                 return {"response": HELP_MESSAGE + ADMIN_HELP}
@@ -100,106 +106,6 @@ async def handle_commands(command: str, message, room: str):
             ])
             return {"response": f"📚 저장된 사이트 목록\n{sites_text}\n\n💡 검색방법: *사이트 [키워드]"}
             
-        elif cmd == "저장" and len(parts) >= 3:
-            keyword = parts[1]
-            url = parts[2]
-            result = await save_site(keyword, url, message.user_id)
-            return {"response": result["message"]}
-            
-        elif cmd == "삭제" and len(parts) >= 2:
-            keyword = parts[1]
-            result = await delete_site(keyword)
-            return {"response": result["message"]}
-            
-        elif cmd == "프롬프트":
-            if room != ADMIN_ROOM:
-                return {"response": "프롬프트 관리는 관리자 방에서만 가능합니다."}
-            
-            if len(parts) < 2:
-                return {"response": "사용법: *프롬프트 [목록/보기/추가/사용/수정]"}
-            
-            subcmd = parts[1]
-            
-            if subcmd == "목록":
-                prompts = "\n".join([
-                    f"{'* ' if name == config.current_prompt else '  '}{name}"
-                    for name in config.prompts
-                ])
-                return {"response": f"=== 프롬프트 목록 ===\n{prompts}"}
-            
-            elif subcmd == "보기":
-                current = config.current_prompt
-                content = config.prompts[current]
-                return {"response": f"=== 현재 프롬프트 ({current}) ===\n{content}"}
-            
-            elif subcmd == "추가" and len(parts) >= 4:
-                name = parts[2]
-                content = " ".join(parts[3:])
-                if name in config.prompts:
-                    return {"response": "이미 존재하는 프롬프트 이름입니다."}
-                config.prompts[name] = content
-                return {"response": f"프롬프트 '{name}' 추가됨"}
-            
-            elif subcmd == "사용" and len(parts) >= 3:
-                name = parts[2]
-                if name not in config.prompts:
-                    return {"response": "존재하지 않는 프롬프트입니다."}
-                config.current_prompt = name
-                return {"response": f"프롬프트를 '{name}'으로 변경했습니다."}
-            
-            elif subcmd == "수정" and len(parts) >= 4:
-                name = parts[2]
-                content = " ".join(parts[3:])
-                if name not in config.prompts:
-                    return {"response": "존재하지 않는 프롬프트입니다."}
-                config.prompts[name] = content
-                return {"response": f"프롬프트 '{name}' 수정됨"}
-
-        elif cmd == "생일":
-            response = await check_character_birthday([room])
-            shop_notice = await check_shop_reset()
-            if shop_notice:
-                response = f"{response}\n\n{shop_notice}" if response else shop_notice
-            return {"response": response}
-            
-        elif cmd == "쓰담":
-            response = await check_stroking_time([room])
-            shop_notice = await check_shop_reset()
-            if shop_notice:
-                response = f"{response}\n\n{shop_notice}" if response else shop_notice
-            return {"response": response}
-            
-        elif cmd.startswith("관리자"):
-            return await handle_admin_commands(command, message.user_id)
-            
-        elif cmd.startswith("공략"):
-            return await handle_guide_commands(command, message.user_id)
-            
-        elif cmd == "토큰":
-            usage = await get_monthly_usage()
-            prediction = await predict_monthly_usage()
-            return {"response": f"이번 달 토큰 사용량: {usage}\n예상 사용량: {prediction}"}
-            
-        elif cmd == "ping":
-            return {"response": "pong!"}
-            
-        elif cmd == "temperature":
-            if room != ADMIN_ROOM:
-                return {"response": "temperature 관리는 관리자 방에서만 가능합니다."}
-            
-            if len(parts) == 1:
-                return {"response": f"현재 temperature: {config.temperature}\n사용법: *temperature [0.0-1.0]"}
-            
-            try:
-                new_temp = float(parts[1])
-                if 0.0 <= new_temp <= 1.0:
-                    config.temperature = new_temp
-                    return {"response": f"temperature가 {new_temp}로 변경되었습니다."}
-                else:
-                    return {"response": "temperature는 0.0에서 1.0 사이의 값이어야 합니다."}
-            except ValueError:
-                return {"response": "올바른 숫자를 입력해주세요."}
-        
         elif cmd == "사이트":
             if len(parts) < 2:
                 return {"response": "검색할 키워드를 입력해주세요.\n사용법: *사이트 [키워드]"}
@@ -212,20 +118,11 @@ async def handle_commands(command: str, message, room: str):
                                   f"등록자: {site_info['user_id']}\n"
                                   f"최종수정: {datetime.fromisoformat(site_info['updated_at']).strftime('%Y-%m-%d %H:%M')}"}
             return {"response": result["message"]}
+            
+        # ... 다른 명령어들 ...
         
-        # 마지막으로 사이트/공략 검색 시도
-        elif result := await get_site(cmd):
-            if result["found"]:
-                site_info = result["url"]
-                return {"response": f"URL: {site_info['url']}\n"
-                                  f"등록자: {site_info['user_id']}\n"
-                                  f"최종수정: {datetime.fromisoformat(site_info['updated_at']).strftime('%Y-%m-%d %H:%M')}"}
-            elif result["status"] == "error":
-                return {"response": f"오류가 발생했습니다: {result['message']}"}
-            else:
-                return {"response": result["message"]}
-        
-        # 위의 모든 명령어에 해당하지 않으면 Claude API로
+        # 명령어가 아닌 경우 Claude API로 전달 (*를 제거한 메시지 전달)
+        message.message = message.message[1:]  # '*' 제거
         return await handle_claude_api(message, room)
             
     except Exception as e:

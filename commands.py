@@ -41,7 +41,7 @@ HELP_MESSAGE = """🤖 아로나 봇 도움말
 - *통계 user123
 - *저장 미래시 https://example.com
 - *목록
-- *호시노
+- *미래시
 - *삭제 미래시
 """
 
@@ -78,15 +78,26 @@ async def handle_commands(command: str, message, room: str):
         parts = command.split()
         cmd = parts[0].lower()
 
-        # 통계 명령어를 사이트 검색보다 먼저 처리
-        if cmd == "통계":
+        # 모든 명령어를 먼저 처리
+        if cmd == "도움말":
+            if room == ADMIN_ROOM:
+                return {"response": HELP_MESSAGE + ADMIN_HELP}
+            return {"response": HELP_MESSAGE}
+            
+        elif cmd == "통계":
             user_id = parts[1] if len(parts) > 1 else None
             result = await get_user_stats(room, user_id)
             return {"response": result["message"]}
             
         elif cmd == "목록":
             result = await get_site_list()
-            return {"response": result["message"]}
+            if result["sites"]:
+                sites_text = "\n".join([
+                    f"• {site['keyword']}: {site['url']}"
+                    for site in result["sites"]
+                ])
+                return {"response": f"=== 저장된 사이트 목록 ===\n{sites_text}"}
+            return {"response": "저장된 사이트가 없습니다."}
             
         elif cmd == "저장" and len(parts) >= 3:
             keyword = parts[1]
@@ -99,23 +110,6 @@ async def handle_commands(command: str, message, room: str):
             result = await delete_site(keyword)
             return {"response": result["message"]}
             
-        # 키워드로 사이트/공략 검색은 마지막에
-        elif result := await get_site(cmd):
-            if result["found"]:
-                site_info = result["url"]
-                return {"response": f"URL: {site_info['url']}\n"
-                                  f"등록자: {site_info['user_id']}\n"
-                                  f"최종수정: {datetime.fromisoformat(site_info['updated_at']).strftime('%Y-%m-%d %H:%M')}"}
-            elif result["status"] == "error":
-                return {"response": f"오류가 발생했습니다: {result['message']}"}
-            else:
-                return {"response": result["message"]}
-        
-        if cmd == "도움말":
-            if room == ADMIN_ROOM:
-                return {"response": HELP_MESSAGE + ADMIN_HELP}
-            return {"response": HELP_MESSAGE}
-
         elif cmd == "프롬프트":
             if room != ADMIN_ROOM:
                 return {"response": "프롬프트 관리는 관리자 방에서만 가능합니다."}
@@ -161,41 +155,33 @@ async def handle_commands(command: str, message, room: str):
                 return {"response": f"프롬프트 '{name}' 수정됨"}
 
         elif cmd == "생일":
-            # 생일 알림 처리
             response = await check_character_birthday([room])
-            # 상점 초기화 알림 추가
             shop_notice = await check_shop_reset()
             if shop_notice:
                 response = f"{response}\n\n{shop_notice}" if response else shop_notice
             return {"response": response}
             
         elif cmd == "쓰담":
-            # 쓰다듬기 알림 처리
             response = await check_stroking_time([room])
-            # 상점 초기화 알림 추가
             shop_notice = await check_shop_reset()
             if shop_notice:
                 response = f"{response}\n\n{shop_notice}" if response else shop_notice
             return {"response": response}
             
-        # 관리자 명령어
         elif cmd.startswith("관리자"):
             return await handle_admin_commands(command, message.user_id)
-        
-        # 공략 관련 명령어
+            
         elif cmd.startswith("공략"):
             return await handle_guide_commands(command, message.user_id)
-        
-        # 토큰 사용량 확인
+            
         elif cmd == "토큰":
             usage = await get_monthly_usage()
             prediction = await predict_monthly_usage()
             return {"response": f"이번 달 토큰 사용량: {usage}\n예상 사용량: {prediction}"}
-        
-        # 핑
+            
         elif cmd == "ping":
             return {"response": "pong!"}
-        
+            
         elif cmd == "temperature":
             if room != ADMIN_ROOM:
                 return {"response": "temperature 관리는 관리자 방에서만 가능합니다."}
@@ -213,9 +199,20 @@ async def handle_commands(command: str, message, room: str):
             except ValueError:
                 return {"response": "올바른 숫자를 입력해주세요."}
         
-        # 기타 명령어는 Claude API로
-        else:
-            return await handle_claude_api(message, room)
+        # 마지막으로 사이트/공략 검색 시도
+        elif result := await get_site(cmd):
+            if result["found"]:
+                site_info = result["url"]
+                return {"response": f"URL: {site_info['url']}\n"
+                                  f"등록자: {site_info['user_id']}\n"
+                                  f"최종수정: {datetime.fromisoformat(site_info['updated_at']).strftime('%Y-%m-%d %H:%M')}"}
+            elif result["status"] == "error":
+                return {"response": f"오류가 발생했습니다: {result['message']}"}
+            else:
+                return {"response": result["message"]}
+        
+        # 위의 모든 명령어에 해당하지 않으면 Claude API로
+        return await handle_claude_api(message, room)
             
     except Exception as e:
         logger.error(f"명령어 처리 중 오류: {str(e)}")

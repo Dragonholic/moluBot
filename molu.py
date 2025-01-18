@@ -39,6 +39,7 @@ def handle_console_command(command: str):
             print("ai off - AI 채팅 비활성화")
             print("prompt - 현재 프롬프트 설정 표시")
             print("status - 현재 설정 상태 표시")
+            print("update - 코드 업데이트 및 서버 재시작")
             print("exit - 서버 종료")
             
         elif command == "rooms":
@@ -81,6 +82,29 @@ def handle_console_command(command: str):
             print("\n등록된 채팅방:")
             for room in config.allowed_rooms:
                 print(f"- {room}")
+                
+        elif command == "update":
+            print("\n코드 업데이트를 시작합니다...")
+            try:
+                # git pull 실행
+                import subprocess
+                result = subprocess.run(['git', 'pull'], capture_output=True, text=True)
+                
+                if result.returncode == 0:
+                    print("코드 업데이트 완료!")
+                    print("변경사항:")
+                    print(result.stdout)
+                    
+                    print("\n서버를 재시작합니다...")
+                    # 현재 프로세스를 새로운 프로세스로 대체
+                    import sys
+                    os.execv(sys.executable, ['python'] + sys.argv)
+                else:
+                    print("업데이트 중 오류 발생:")
+                    print(result.stderr)
+                    
+            except Exception as e:
+                print(f"업데이트 중 오류 발생: {str(e)}")
                 
         elif command == "exit":
             print("서버를 종료합니다...")

@@ -131,8 +131,20 @@ async def handle_commands(command: str, message, room: str):
             
             keyword = parts[1]
             url = parts[2]
+            
+            # 먼저 해당 키워드의 사이트가 있는지 확인
+            existing = await get_site(keyword)
+            if existing["found"]:
+                # 있으면 삭제
+                await delete_site(keyword)
+                
+            # 새로운 사이트 저장
             result = await save_site(keyword, url, message.user_id)
-            return {"response": result["message"]}
+            
+            if result["status"] == "success":
+                return {"response": f"사이트가 업데이트되었습니다.\n키워드: {keyword}\nURL: {url}"}
+            else:
+                return {"response": result["message"]}
             
         elif cmd == "사이트":
             if len(parts) < 2:

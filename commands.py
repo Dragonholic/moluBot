@@ -98,25 +98,32 @@ async def handle_commands(command: str, message, room: str):
         elif cmd == "목록":
             try:
                 result = await get_site_list()
-                logger.info(f"get_site_list 결과: {result}")  # 디버깅을 위한 로그
+                logger.info(f"get_site_list 결과 타입: {type(result)}")  # 타입 확인
+                logger.info(f"get_site_list 결과: {result}")  # 결과 확인
                 
                 if not result:  # 빈 리스트인 경우
                     return {"response": "저장된 사이트가 없습니다."}
                 
-                if isinstance(result, dict) and "sites" in result:
-                    sites = result["sites"]
-                else:
-                    sites = result
-                    
+                # 문자열이나 다른 형태의 결과를 처리
+                if isinstance(result, str):
+                    return {"response": result}
+                
+                # 리스트나 딕셔너리 처리
+                sites = result if isinstance(result, list) else result.get("sites", [])
+                
+                if not sites:
+                    return {"response": "저장된 사이트가 없습니다."}
+                
                 sites_text = "\n".join([
-                    f"• {site['keyword']}: {site['url']}"
+                    f"• {site.get('keyword', '')}: {site.get('url', '')}"
                     for site in sites
                 ])
                 return {"response": f"📚 저장된 사이트 목록\n{sites_text}\n\n💡 검색방법: *사이트 [키워드]"}
                 
             except Exception as e:
                 logger.error(f"사이트 목록 처리 중 오류: {str(e)}")
-                return {"response": f"사이트 목록을 불러오는 중 오류가 발생했습니다. 오류: {str(e)}"}
+                logger.error(f"결과값: {result}")  # 결과값 로깅
+                return {"response": "사이트 목록을 불러오는 중 오류가 발생했습니다."}
             
         elif cmd == "저장":
             if len(parts) < 3:

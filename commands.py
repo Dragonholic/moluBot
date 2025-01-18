@@ -92,16 +92,19 @@ async def handle_commands(command: str, message, room: str):
             return {"response": HELP_MESSAGE}
             
         elif cmd == "토큰":
-            monthly_usage = await get_monthly_usage()
-            predicted_usage = await predict_monthly_usage()
-            return {"response": f"📊 이번 달 토큰 사용량\n"
-                              f"현재: {monthly_usage:,} 토큰\n"
-                              f"예상: {predicted_usage:,} 토큰"}
+            try:
+                monthly_usage = await get_monthly_usage()
+                predicted_usage = await predict_monthly_usage()
+                
+                response = f"📊 이번 달 토큰 사용량\n{monthly_usage}\n{predicted_usage}"
+                return {"response": response}
+                    
+            except Exception as e:
+                logger.error(f"토큰 사용량 확인 중 오류: {str(e)}")
+                return {"response": "토큰 사용량을 확인하는 중 오류가 발생했습니다."}
             
         elif cmd == "생일":
-            birthday_chars = await check_character_birthday()
-            if not birthday_chars:
-                return {"response": "오늘은 생일인 캐릭터가 없습니다."}
+            birthday_chars = await check_character_birthday([])
             return {"response": birthday_chars}
             
         elif cmd == "쓰담":

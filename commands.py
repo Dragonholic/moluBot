@@ -91,13 +91,14 @@ async def handle_commands(command: str, message, room: str):
             
         elif cmd == "목록":
             result = await get_site_list()
-            if result["sites"]:
-                sites_text = "\n".join([
-                    f"• {site['keyword']}: {site['url']}"
-                    for site in result["sites"]
-                ])
-                return {"response": f"=== 저장된 사이트 목록 ===\n{sites_text}"}
-            return {"response": "저장된 사이트가 없습니다."}
+            if not result["sites"]:
+                return {"response": "저장된 사이트가 없습니다."}
+                
+            sites_text = "\n".join([
+                f"• {site['keyword']}: {site['url']}"
+                for site in result["sites"]
+            ])
+            return {"response": f"📚 저장된 사이트 목록\n{sites_text}\n\n💡 검색방법: *사이트 [키워드]"}
             
         elif cmd == "저장" and len(parts) >= 3:
             keyword = parts[1]
@@ -198,6 +199,19 @@ async def handle_commands(command: str, message, room: str):
                     return {"response": "temperature는 0.0에서 1.0 사이의 값이어야 합니다."}
             except ValueError:
                 return {"response": "올바른 숫자를 입력해주세요."}
+        
+        elif cmd == "사이트":
+            if len(parts) < 2:
+                return {"response": "검색할 키워드를 입력해주세요.\n사용법: *사이트 [키워드]"}
+            
+            keyword = parts[1]
+            result = await get_site(keyword)
+            if result["found"]:
+                site_info = result["url"]
+                return {"response": f"URL: {site_info['url']}\n"
+                                  f"등록자: {site_info['user_id']}\n"
+                                  f"최종수정: {datetime.fromisoformat(site_info['updated_at']).strftime('%Y-%m-%d %H:%M')}"}
+            return {"response": result["message"]}
         
         # 마지막으로 사이트/공략 검색 시도
         elif result := await get_site(cmd):

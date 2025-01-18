@@ -12,6 +12,7 @@ from features.admin import is_admin, add_admin, remove_admin
 from features.guide import save_guide, get_guide
 from features.sites import save_site, get_site, get_site_list, delete_site
 from features.chat_stats import get_user_stats, log_chat
+import ast  # 문자열로 된 딕셔너리를 파싱하기 위해 추가
 
 logger = logging.getLogger(__name__)
 ADMIN_ROOM = "프로젝트 아로나"
@@ -98,31 +99,35 @@ async def handle_commands(command: str, message, room: str):
         elif cmd == "목록":
             try:
                 result = await get_site_list()
-                logger.info(f"get_site_list 결과 타입: {type(result)}")  # 타입 확인
-                logger.info(f"get_site_list 결과: {result}")  # 결과 확인
+                logger.info(f"get_site_list 결과: {result}")
                 
-                if not result:  # 빈 리스트인 경우
+                if not result or not isinstance(result, dict) or "message" not in result:
                     return {"response": "저장된 사이트가 없습니다."}
                 
-                # 문자열이나 다른 형태의 결과를 처리
-                if isinstance(result, str):
-                    return {"response": result}
+                # 메시지에서 사이트 정보 추출
+                message_lines = result["message"].split("\n")
+                sites_text = []
                 
-                # 리스트나 딕셔너리 처리
-                sites = result if isinstance(result, list) else result.get("sites", [])
+                for line in message_lines:
+                    if line.startswith("- "):  # 사이트 정보 라인
+                        try:
+                            # "- 키워드: {...}" 형식에서 키워드와 데이터 분리
+                            keyword, data_str = line[2:].split(": ", 1)
+                            # 문자열로 된 딕셔너리를 파싱
+                            data = ast.literal_eval(data_str)
+                            sites_text.append(f"• {keyword}: {data['url']}")
+                        except Exception as e:
+                            logger.error(f"사이트 정보 파싱 오류: {str(e)}")
+                            continue
                 
-                if not sites:
-                    return {"response": "저장된 사이트가 없습니다."}
+                if not sites_text:
+                    return {"response": "사이트가 텍스트가 아닙니다."}
                 
-                sites_text = "\n".join([
-                    f"• {site.get('keyword', '')}: {site.get('url', '')}"
-                    for site in sites
-                ])
-                return {"response": f"📚 저장된 사이트 목록\n{sites_text}\n\n💡 검색방법: *사이트 [키워드]"}
+                response = "📚 저장된 사이트 목록\n" + "\n".join(sites_text) + "\n\n💡 검색방법: *사이트 [키워드]"
+                return {"response": response}
                 
             except Exception as e:
                 logger.error(f"사이트 목록 처리 중 오류: {str(e)}")
-                logger.error(f"결과값: {result}")  # 결과값 로깅
                 return {"response": "사이트 목록을 불러오는 중 오류가 발생했습니다."}
             
         elif cmd == "저장":

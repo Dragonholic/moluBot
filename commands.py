@@ -91,12 +91,12 @@ async def handle_commands(command: str, message, room: str):
             
         elif cmd == "목록":
             result = await get_site_list()
-            if not result["sites"]:
+            if not result:
                 return {"response": "저장된 사이트가 없습니다."}
                 
             sites_text = "\n".join([
                 f"• {site['keyword']}: {site['url']}"
-                for site in result["sites"]
+                for site in result
             ])
             return {"response": f"📚 저장된 사이트 목록\n{sites_text}\n\n💡 검색방법: *사이트 [키워드]"}
             

@@ -41,7 +41,7 @@ HELP_MESSAGE = """🤖 아로나 봇 도움말
 - *통계 user123
 - *저장 미래시 https://example.com
 - *목록
-- *미래시
+- *사이트 미래시
 - *삭제 미래시
 """
 
@@ -97,14 +97,27 @@ async def handle_commands(command: str, message, room: str):
             
         elif cmd == "목록":
             result = await get_site_list()
-            if not result:
+            if not result:  # 빈 리스트인 경우
                 return {"response": "저장된 사이트가 없습니다."}
                 
-            sites_text = "\n".join([
-                f"• {site['keyword']}: {site['url']}"
-                for site in result
-            ])
-            return {"response": f"📚 저장된 사이트 목록\n{sites_text}\n\n💡 검색방법: *사이트 [키워드]"}
+            try:
+                sites_text = "\n".join([
+                    f"• {site['keyword']}: {site['url']}"
+                    for site in result  # result 자체가 리스트이므로 직접 사용
+                ])
+                return {"response": f"📚 저장된 사이트 목록\n{sites_text}\n\n💡 검색방법: *사이트 [키워드]"}
+            except Exception as e:
+                logger.error(f"사이트 목록 처리 중 오류: {str(e)}")
+                return {"response": "사이트 목록을 불러오는 중 오류가 발생했습니다."}
+            
+        elif cmd == "저장":
+            if len(parts) < 3:
+                return {"response": "사용법: *저장 [키워드] [URL]"}
+            
+            keyword = parts[1]
+            url = parts[2]
+            result = await save_site(keyword, url, message.user_id)
+            return {"response": result["message"]}
             
         elif cmd == "사이트":
             if len(parts) < 2:

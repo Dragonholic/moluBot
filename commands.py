@@ -91,6 +91,27 @@ async def handle_commands(command: str, message, room: str):
                 return {"response": HELP_MESSAGE + ADMIN_HELP}
             return {"response": HELP_MESSAGE}
             
+        elif cmd == "토큰":
+            monthly_usage = await get_monthly_usage()
+            predicted_usage = await predict_monthly_usage()
+            return {"response": f"📊 이번 달 토큰 사용량\n"
+                              f"현재: {monthly_usage:,} 토큰\n"
+                              f"예상: {predicted_usage:,} 토큰"}
+            
+        elif cmd == "생일":
+            birthday_chars = await check_character_birthday()
+            if not birthday_chars:
+                return {"response": "오늘은 생일인 캐릭터가 없습니다."}
+            return {"response": birthday_chars}
+            
+        elif cmd == "쓰담":
+            stroking_info = await check_stroking_time()
+            return {"response": stroking_info}
+            
+        elif cmd == "관리자확인":
+            admin_list = await is_admin(message.user_id)
+            return {"response": admin_list}
+            
         elif cmd == "통계":
             user_id = parts[1] if len(parts) > 1 else None
             result = await get_user_stats(room, user_id)
